@@ -21,7 +21,7 @@ module "jenkins_server" {
   vpc_id            = module.vpc.vpc_id
   project_name      = var.project_name
   aws_ami_id        = var.aim_id
-  aws_instance_type = "m7i.large"
+  aws_instance_type = "m7i-flex.large"
   key_name          = var.key_name
   subnet_id         = module.vpc.subnet_id
   private_ip        = var.subnet_ip[0]
@@ -37,7 +37,7 @@ module "jenkins_agent" {
   vpc_id            = module.vpc.vpc_id
   project_name      = var.project_name
   aws_ami_id        = var.aim_id
-  aws_instance_type = "m7i.large"
+  aws_instance_type = "m7i-flex.large"
   key_name          = var.key_name
   subnet_id         = module.vpc.subnet_id
   private_ip        = var.subnet_ip[1]
@@ -52,7 +52,7 @@ module "sonar_server" {
   vpc_id            = module.vpc.vpc_id
   project_name      = var.project_name
   aws_ami_id        = var.aim_id
-  aws_instance_type = "m7i.large"
+  aws_instance_type = "m7i-flex.large"
   key_name          = var.key_name
   subnet_id         = module.vpc.subnet_id
   private_ip        = var.subnet_ip[2]
@@ -69,7 +69,7 @@ module "k3s" {
   vpc_id            = module.vpc.vpc_id
   project_name      = var.project_name
   aws_ami_id        = var.aim_id
-  aws_instance_type = "m7i.large"
+  aws_instance_type = "m7i-flex.large"
   key_name          = var.key_name
   subnet_id         = module.vpc.subnet_id
   private_ip        = var.subnet_ip[3]
