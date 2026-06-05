@@ -16,5 +16,5 @@ volume_size_sonar_server   = 20
 ingress_ports_k3s = [22, 6443]
 volume_size_k3s   = 20
 
-key_name       = "jenkins-share-lib.pem"
+key_name       = "jenkins-share-lib"
 instance_state = "running" //"stopped" to stop the instance, "running" to start the instance
