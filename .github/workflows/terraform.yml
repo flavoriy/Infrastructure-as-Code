@@ -14,15 +14,9 @@ on:
         type: choice
         options:
           - apply
+          - start
+          - stop
           - destroy
-      instance_state:
-        description: 'EC2 instance state (ignored when action=destroy)'
-        required: false
-        default: 'running'
-        type: choice
-        options:
-          - running
-          - stopped
 
 permissions:
   contents: read
@@ -58,7 +52,7 @@ jobs:
       run: terraform fmt -check
 
     - name: Run Checkov Security Scan
-      if: github.event.inputs.action != 'destroy'
+      if: github.event_name != 'workflow_dispatch' || github.event.inputs.action != 'destroy'
       uses: bridgecrewio/checkov-action@master
       with:
         directory: .
@@ -68,20 +62,33 @@ jobs:
         skip_check: CKV_AWS_382,CKV2_AWS_11,CKV2_AWS_41
 
     - name: Terraform Plan
-      if: github.event.inputs.action != 'destroy'
+      if: github.event_name != 'workflow_dispatch' || github.event.inputs.action != 'destroy'
+      env:
+        TF_ACTION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.action || 'plan' }}
       run: |
-        terraform plan -input=false \
-          ${{ github.event_name == 'workflow_dispatch' && format('-var="instance_state={0}"', inputs.instance_state) || '' }}
-
-    - name: Terraform Apply
-      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-      run: terraform apply -auto-approve -input=false
+        case "$TF_ACTION" in
+          start)
+            terraform plan -input=false -var="instance_state=running"
+            ;;
+          stop)
+            terraform plan -input=false -var="instance_state=stopped"
+            ;;
+          *)
+            terraform plan -input=false
+            ;;
+        esac
 
     - name: Terraform Apply (manual trigger)
       if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply'
-      run: |
-        terraform apply -auto-approve -input=false \
-          -var="instance_state=${{ inputs.instance_state }}"
+      run: terraform apply -auto-approve -input=false
+
+    - name: Terraform Start Instances
+      if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'start'
+      run: terraform apply -auto-approve -input=false -var="instance_state=running"
+
+    - name: Terraform Stop Instances
+      if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'stop'
+      run: terraform apply -auto-approve -input=false -var="instance_state=stopped"
 
     - name: Terraform Destroy
       if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy'
