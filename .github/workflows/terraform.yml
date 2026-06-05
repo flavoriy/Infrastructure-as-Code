@@ -5,6 +5,16 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      instance_state:
+        description: 'Set EC2 instance state'
+        required: true
+        default: 'running'
+        type: choice
+        options:
+          - running
+          - stopped
 
 permissions:
   contents: read
@@ -23,12 +33,12 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    # - name: Configure AWS Credentials
-    #   uses: aws-actions/configure-aws-credentials@v4
-    #   with:
-    #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-    #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-    #     aws-region: ${{ secrets.AWS_REGION }}
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
 
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
@@ -49,4 +59,16 @@ jobs:
         skip_check: CKV_AWS_382,CKV2_AWS_11,CKV2_AWS_41
 
     - name: Terraform Plan
-      run: terraform plan -input=false
+      run: |
+        terraform plan -input=false \
+          ${{ github.event_name == 'workflow_dispatch' && format('-var="instance_state={0}"', inputs.instance_state) || '' }}
+
+    - name: Terraform Apply
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      run: terraform apply -auto-approve -input=false
+
+    - name: Terraform Apply (manual trigger)
+      if: github.event_name == 'workflow_dispatch'
+      run: |
+        terraform apply -auto-approve -input=false \
+          -var="instance_state=${{ inputs.instance_state }}"
