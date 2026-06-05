@@ -113,27 +113,32 @@ terraform output
 
 ### 4. Stop / Start instances (cost saving)
 
-In `terraform.tfvars`:
-```hcl
-instance_state = "stopped"   # stop all instances
-instance_state = "running"   # start all instances
-```
+**Via GitHub Actions (recommended):** Go to **Actions → Terraform → Run workflow**, set `action = apply` and choose `instance_state`.
 
-Then run `terraform apply`.
+**Via local CLI:**
+```bash
+terraform apply -auto-approve -var="instance_state=stopped"   # stop
+terraform apply -auto-approve -var="instance_state=running"   # start
+```
 
 ### 5. Destroy all infrastructure
 
+**Via GitHub Actions (recommended):** Go to **Actions → Terraform → Run workflow**, set `action = destroy`.
+
+**Via local CLI:**
 ```bash
 terraform destroy
 ```
 
 ## CI/CD Pipeline (GitHub Actions)
 
-The pipeline runs automatically on every push or pull request to the `main` branch.
+The pipeline supports three trigger modes:
 
-```
-push/PR → Checkout → AWS Auth → Terraform Init → fmt check → Checkov Scan → Terraform Plan
-```
+| Trigger | Behaviour |
+|---------|-----------|
+| Pull Request → `main` | Init → fmt check → Checkov → Plan (no apply) |
+| Push → `main` | Init → fmt check → Checkov → Plan → **Apply** |
+| Manual (`workflow_dispatch`) | Choose action and instance state — see below |
 
 ### GitHub Secrets Configuration
 
@@ -145,9 +150,30 @@ Go to **Settings → Secrets and variables → Actions** and add:
 | `AWS_SECRET_ACCESS_KEY` | AWS IAM Secret Access Key |
 | `AWS_REGION` | `ap-southeast-1` |
 
+### Manual Trigger (workflow_dispatch)
+
+Go to **Actions → Terraform → Run workflow** and fill in the inputs:
+
+| Input | Options | Description |
+|-------|---------|-------------|
+| `action` | `apply` / `destroy` | `apply` creates or updates infrastructure; `destroy` tears everything down |
+| `instance_state` | `running` / `stopped` | Only used when `action = apply` |
+
+**Start/stop all instances without touching code:**
+```
+action:         apply
+instance_state: stopped   ← or "running" to start
+```
+
+**Destroy all infrastructure:**
+```
+action:         destroy
+instance_state: (ignored)
+```
+
 ### Checkov Security Scan
 
-The pipeline scans for security issues using [Checkov](https://www.checkov.io/) and fails on any `HIGH` or `CRITICAL` findings.
+The pipeline scans for security issues using [Checkov](https://www.checkov.io/) and fails on any `HIGH` or `CRITICAL` findings. Scan is skipped automatically when `action = destroy`.
 
 The following checks are intentionally skipped:
 

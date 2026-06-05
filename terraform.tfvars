@@ -1,5 +1,5 @@
 aws_region   = "ap-southeast-1"
-aim_id       = "ami-0c55b159cbfafe1f0"
+aim_id       = "ami-0a56f8447277affd8"
 subnet_cidr  = "10.0.1.0/24"
 subnet_ip    = ["10.0.1.1", "10.0.1.2", "10.0.1.3", "10.0.1.4"]
 project_name = "devops-project"
