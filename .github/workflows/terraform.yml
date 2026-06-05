@@ -7,9 +7,17 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
     inputs:
-      instance_state:
-        description: 'Set EC2 instance state'
+      action:
+        description: 'Action to perform'
         required: true
+        default: 'apply'
+        type: choice
+        options:
+          - apply
+          - destroy
+      instance_state:
+        description: 'EC2 instance state (ignored when action=destroy)'
+        required: false
         default: 'running'
         type: choice
         options:
@@ -38,7 +46,7 @@ jobs:
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
+        aws-region: ${{ secrets.AWS_REGION }}
 
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
@@ -50,6 +58,7 @@ jobs:
       run: terraform fmt -check
 
     - name: Run Checkov Security Scan
+      if: github.event.inputs.action != 'destroy'
       uses: bridgecrewio/checkov-action@master
       with:
         directory: .
@@ -59,6 +68,7 @@ jobs:
         skip_check: CKV_AWS_382,CKV2_AWS_11,CKV2_AWS_41
 
     - name: Terraform Plan
+      if: github.event.inputs.action != 'destroy'
       run: |
         terraform plan -input=false \
           ${{ github.event_name == 'workflow_dispatch' && format('-var="instance_state={0}"', inputs.instance_state) || '' }}
@@ -68,7 +78,11 @@ jobs:
       run: terraform apply -auto-approve -input=false
 
     - name: Terraform Apply (manual trigger)
-      if: github.event_name == 'workflow_dispatch'
+      if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply'
       run: |
         terraform apply -auto-approve -input=false \
           -var="instance_state=${{ inputs.instance_state }}"
+
+    - name: Terraform Destroy
+      if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy'
+      run: terraform destroy -auto-approve -input=false
