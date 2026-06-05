@@ -89,5 +89,5 @@ variable "volume_size_k3s" {
 variable "key_name" {
   description = "The name of the SSH key pair to use for the EC2 instance"
   type        = string
-  default     = "jenkins-share-lib.pem"
+  default     = "jenkins-share-lib"
 }
