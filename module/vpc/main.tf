@@ -1,39 +1,46 @@
 resource "aws_vpc" "vpc" {
-    cidr_block = var.cidr_block
-    tags = {
-        Name = "${var.project_name}-vpc"
-    }
+  cidr_block = var.cidr_block
+  tags = {
+    Name = "${var.project_name}-vpc"
+  }
+}
+
+resource "aws_default_security_group" "default" {
+  vpc_id = aws_vpc.vpc.id
+  tags = {
+    Name = "${var.project_name}-default-sg-restricted"
+  }
 }
 
 resource "aws_subnet" "subnet" {
-    vpc_id                  = aws_vpc.vpc.id
-    cidr_block              = var.subnet_cidr
-    availability_zone       = "${var.aws_region}a"
-    map_public_ip_on_launch = true
-    tags = {
-        Name = "${var.project_name}-subnet"
-    }
+  vpc_id                  = aws_vpc.vpc.id
+  cidr_block              = var.subnet_cidr
+  availability_zone       = "${var.aws_region}a"
+  map_public_ip_on_launch = false
+  tags = {
+    Name = "${var.project_name}-subnet"
+  }
 }
 
 resource "aws_internet_gateway" "igw" {
-    vpc_id = aws_vpc.vpc.id
-    tags = {
-        Name = "${var.project_name}-igw"
-    }
+  vpc_id = aws_vpc.vpc.id
+  tags = {
+    Name = "${var.project_name}-igw"
+  }
 }
 
 resource "aws_route_table" "rt" {
-    vpc_id = aws_vpc.vpc.id
-    route {
-        cidr_block = "0.0.0.0/0"
-        gateway_id = aws_internet_gateway.igw.id
-    }
-    tags = {
-        Name = "${var.project_name}-rt"
-    }
+  vpc_id = aws_vpc.vpc.id
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.igw.id
+  }
+  tags = {
+    Name = "${var.project_name}-rt"
+  }
 }
 
 resource "aws_route_table_association" "rta" {
-    subnet_id      = aws_subnet.subnet.id
-    route_table_id = aws_route_table.rt.id
+  subnet_id      = aws_subnet.subnet.id
+  route_table_id = aws_route_table.rt.id
 }

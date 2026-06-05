@@ -15,6 +15,7 @@ resource "aws_security_group" "sg" {
   }
 
   egress {
+    description = "Allow all outbound traffic"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -43,10 +44,19 @@ resource "aws_instance" "ec2" {
   subnet_id                   = var.subnet_id
   private_ip                  = var.private_ip
   associate_public_ip_address = false
+  ebs_optimized               = true
+  monitoring                  = true
+
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 1
+  }
 
   root_block_device {
     volume_size = var.volume_size
     volume_type = "gp3"
+    encrypted   = true
   }
 
   tags = {
@@ -56,9 +66,8 @@ resource "aws_instance" "ec2" {
 
 
 resource "aws_eip_association" "eip_assoc" {
-  instance_id        = aws_instance.ec2.id
-  allocation_id      = aws_eip.eip.id
-  private_ip_address = var.private_ip
+  instance_id   = aws_instance.ec2.id
+  allocation_id = aws_eip.eip.id
 }
 
 
