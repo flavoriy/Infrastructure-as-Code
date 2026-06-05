@@ -1,7 +1,7 @@
 aws_region   = "ap-southeast-1"
 aim_id       = "ami-0a56f8447277affd8"
 subnet_cidr  = "10.0.1.0/24"
-subnet_ip    = ["10.0.1.1", "10.0.1.2", "10.0.1.3", "10.0.1.4"]
+subnet_ip    = ["10.0.1.10", "10.0.1.11", "10.0.1.12", "10.0.1.13"]
 project_name = "devops-project"
 
 ingress_ports_jenkins_server = [22, 8080]

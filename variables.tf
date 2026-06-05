@@ -19,7 +19,7 @@ variable "subnet_cidr" {
 variable "subnet_ip" {
   description = "IP addresses for the subnets"
   type        = list(string)
-  default     = ["10.0.1.1", "10.0.1.2", "10.0.1.3", "10.0.1.4"]
+  default     = ["10.0.1.10", "10.0.1.11", "10.0.1.12", "10.0.1.13"]
 }
 
 variable "aim_id" {
