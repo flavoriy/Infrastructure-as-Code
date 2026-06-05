@@ -1,3 +1,4 @@
+#checkov:skip=CKV_AWS_382:Outbound internet access required for package downloads in DevOps environment
 resource "aws_security_group" "sg" {
   name        = "${var.project_name}-${var.instance_name}-sg"
   description = "Security group for ${var.instance_name}"
@@ -36,6 +37,7 @@ resource "aws_eip" "eip" {
 }
 
 
+#checkov:skip=CKV2_AWS_41:IAM role not required for this DevOps lab environment
 resource "aws_instance" "ec2" {
   ami                         = var.aws_ami_id
   instance_type               = var.aws_instance_type

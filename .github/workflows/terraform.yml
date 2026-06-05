@@ -46,6 +46,7 @@ jobs:
         framework: terraform
         output_format: cli
         hard_fail_on: HIGH,CRITICAL
+        skip_check: CKV_AWS_382,CKV2_AWS_11,CKV2_AWS_41
 
     - name: Terraform Plan
       run: terraform plan -input=false

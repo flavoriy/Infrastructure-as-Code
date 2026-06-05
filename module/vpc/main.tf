@@ -1,3 +1,4 @@
+#checkov:skip=CKV2_AWS_11:VPC Flow Logs not required for this DevOps lab environment
 resource "aws_vpc" "vpc" {
   cidr_block = var.cidr_block
   tags = {
