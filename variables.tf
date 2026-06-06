@@ -91,3 +91,27 @@ variable "key_name" {
   type        = string
   default     = "jenkins-share-lib"
 }
+
+variable "instance_type_jenkins_server" {
+  description = "The instance type for the Jenkins server"
+  type        = string
+  default     = "m7i-flex.large"
+}
+
+variable "instance_type_jenkins_agent" {
+  description = "The instance type for the Jenkins agent"
+  type        = string
+  default     = "m7i-flex.large"
+}
+
+variable "instance_type_sonar_server" {
+  description = "The instance type for the SonarQube server"
+  type        = string
+  default     = "m7i-flex.large"
+}
+
+variable "instance_type_k3s" {
+  description = "The instance type for the k3s server"
+  type        = string
+  default     = "m7i-flex.large"
+}

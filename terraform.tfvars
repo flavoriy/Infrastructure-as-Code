@@ -16,7 +16,7 @@ ingress_ports_sonar_server = [22, 9000]
 volume_size_sonar_server   = 20
 instance_type_sonar_server = "m7i-flex.large"
 
-ingress_ports_k3s = [22, 6443]
+ingress_ports_k3s = [22, 30080, 30443]
 volume_size_k3s   = 20
 instance_type_k3s = "m7i-flex.large"
 
