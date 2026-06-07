@@ -1,0 +1,90 @@
+name: 'EC2 Power State'
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Power action to perform'
+        required: true
+        default: 'stop'
+        type: choice
+        options:
+          - start
+          - stop
+      project_name:
+        description: 'Terraform project_name tag prefix'
+        required: true
+        default: 'jenkins-share-lib-project'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  ec2-power-state:
+    name: 'EC2 Power State'
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Resolve target instances
+        id: resolve
+        env:
+          ACTION: ${{ github.event.inputs.action }}
+          PROJECT_NAME: ${{ github.event.inputs.project_name }}
+        run: |
+          set -euo pipefail
+
+          names=(
+            "$PROJECT_NAME-jenkins_server"
+            "$PROJECT_NAME-jenkins_agent"
+            "$PROJECT_NAME-k3s"
+            "$PROJECT_NAME-k3s_worker_1"
+            "$PROJECT_NAME-k3s_worker_2"
+          )
+
+          case "$ACTION" in
+            start)
+              state_filter="stopped"
+              ;;
+            stop)
+              state_filter="running"
+              ;;
+            *)
+              echo "Unsupported action: $ACTION" >&2
+              exit 1
+              ;;
+          esac
+
+          values=$(IFS=,; echo "${names[*]}")
+          instance_ids=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=$values" "Name=instance-state-name,Values=$state_filter" \
+            --query 'Reservations[].Instances[].InstanceId' \
+            --output text)
+
+          echo "Target names: $values"
+          echo "Current state filter: $state_filter"
+
+          if [ -z "$instance_ids" ] || [ "$instance_ids" = "None" ]; then
+            echo "No instances need action."
+            echo "instance_ids=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Instance IDs: $instance_ids"
+          echo "instance_ids=$instance_ids" >> "$GITHUB_OUTPUT"
+
+      - name: Start instances
+        if: github.event.inputs.action == 'start' && steps.resolve.outputs.instance_ids != ''
+        run: aws ec2 start-instances --instance-ids ${{ steps.resolve.outputs.instance_ids }}
+
+      - name: Stop instances
+        if: github.event.inputs.action == 'stop' && steps.resolve.outputs.instance_ids != ''
+        run: aws ec2 stop-instances --instance-ids ${{ steps.resolve.outputs.instance_ids }}

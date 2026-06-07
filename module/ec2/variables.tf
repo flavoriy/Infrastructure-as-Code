@@ -50,8 +50,3 @@ variable "volume_size" {
   default     = 20
 }
 
-variable "instance_state" {
-  description = "The desired state of the EC2 instance (running or stopped)"
-  type        = string
-  default     = "running"
-}

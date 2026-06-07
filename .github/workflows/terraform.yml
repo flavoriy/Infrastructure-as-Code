@@ -1,4 +1,4 @@
-name: 'Terraform'
+name: 'Terraform Infra'
 
 on:
   push:
@@ -20,9 +20,12 @@ on:
         type: choice
         options:
           - apply
-          - start
-          - stop
           - destroy
+      allow_instance_replace:
+        description: 'Allow Terraform to recreate EC2 instances'
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -69,32 +72,39 @@ jobs:
 
     - name: Terraform Plan
       if: github.event_name != 'workflow_dispatch' || github.event.inputs.action != 'destroy'
+      run: terraform plan -input=false -out=tfplan
+
+    - name: Block accidental EC2 replacement
+      if: github.event_name != 'workflow_dispatch' || github.event.inputs.action != 'destroy'
       env:
-        TF_ACTION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.action || 'plan' }}
+        ALLOW_INSTANCE_REPLACE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.allow_instance_replace || 'false' }}
       run: |
-        case "$TF_ACTION" in
-          start)
-            terraform plan -input=false -var="instance_state=running"
-            ;;
-          stop)
-            terraform plan -input=false -var="instance_state=stopped"
-            ;;
-          *)
-            terraform plan -input=false
-            ;;
-        esac
+        set -euo pipefail
+
+        if [ "$ALLOW_INSTANCE_REPLACE" = "true" ]; then
+          echo "EC2 replacement is explicitly allowed for this run."
+          exit 0
+        fi
+
+        terraform show -json tfplan > tfplan.json
+
+        replacements=$(jq -r '
+          .resource_changes[]?
+          | select(.type == "aws_instance")
+          | select((.change.actions | index("delete")) and (.change.actions | index("create")))
+          | .address
+        ' tfplan.json)
+
+        if [ -n "$replacements" ]; then
+          echo "Terraform plan wants to recreate EC2 instances:" >&2
+          echo "$replacements" >&2
+          echo "Canceling. Re-run with allow_instance_replace=true only if this is intentional." >&2
+          exit 1
+        fi
 
     - name: Terraform Apply (manual trigger)
       if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply'
-      run: terraform apply -auto-approve -input=false
-
-    - name: Terraform Start Instances
-      if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'start'
-      run: terraform apply -auto-approve -input=false -var="instance_state=running"
-
-    - name: Terraform Stop Instances
-      if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'stop'
-      run: terraform apply -auto-approve -input=false -var="instance_state=stopped"
+      run: terraform apply -auto-approve -input=false tfplan
 
     - name: Terraform Destroy
       if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy'

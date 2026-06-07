@@ -73,9 +73,3 @@ resource "aws_eip_association" "eip_assoc" {
 }
 
 
-resource "aws_ec2_instance_state" "state" {
-  instance_id = aws_instance.ec2.id
-  state       = var.instance_state
-
-  depends_on = [aws_eip_association.eip_assoc]
-}

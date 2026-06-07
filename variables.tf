@@ -19,7 +19,7 @@ variable "subnet_cidr" {
 variable "subnet_ip" {
   description = "IP addresses for the subnets"
   type        = list(string)
-  default     = ["10.0.1.10", "10.0.1.11", "10.0.1.12", "10.0.1.13"]
+  default     = ["10.0.1.10", "10.0.1.11", "10.0.1.12", "10.0.1.13", "10.0.1.14"]
 }
 
 variable "aim_id" {
@@ -30,12 +30,6 @@ variable "aim_id" {
 variable "project_name" {
   description = "The name of the project"
   type        = string
-}
-
-variable "instance_state" {
-  description = "The desired state of the EC2 instance (e.g., running, stopped)"
-  type        = string
-  default     = "running"
 }
 
 variable "ingress_ports_jenkins_server" {
@@ -62,18 +56,6 @@ variable "volume_size_jenkins_agent" {
   default     = 20
 }
 
-variable "ingress_ports_sonar_server" {
-  description = "List of ingress ports for the SonarQube server"
-  type        = list(number)
-  default     = [22, 9000]
-}
-
-variable "volume_size_sonar_server" {
-  description = "The size of the root EBS volume for the SonarQube server (in GB)"
-  type        = number
-  default     = 20
-}
-
 variable "ingress_ports_k3s" {
   description = "List of ingress ports for the k3s server"
   type        = list(number)
@@ -86,6 +68,18 @@ variable "volume_size_k3s" {
   default     = 20
 }
 
+variable "ingress_ports_k3s_worker" {
+  description = "List of ingress ports for the k3s worker nodes"
+  type        = list(number)
+  default     = [22]
+}
+
+variable "volume_size_k3s_worker" {
+  description = "The size of the root EBS volume for each k3s worker node (in GB)"
+  type        = number
+  default     = 20
+}
+
 variable "key_name" {
   description = "The name of the SSH key pair to use for the EC2 instance"
   type        = string
@@ -93,25 +87,25 @@ variable "key_name" {
 }
 
 variable "instance_type_jenkins_server" {
-  description = "The instance type for the Jenkins server"
+  description = "The EC2 instance type for the Jenkins server"
   type        = string
   default     = "m7i-flex.large"
 }
 
 variable "instance_type_jenkins_agent" {
-  description = "The instance type for the Jenkins agent"
-  type        = string
-  default     = "m7i-flex.large"
-}
-
-variable "instance_type_sonar_server" {
-  description = "The instance type for the SonarQube server"
+  description = "The EC2 instance type for the Jenkins agent"
   type        = string
   default     = "m7i-flex.large"
 }
 
 variable "instance_type_k3s" {
-  description = "The instance type for the k3s server"
+  description = "The EC2 instance type for the k3s server"
+  type        = string
+  default     = "m7i-flex.large"
+}
+
+variable "instance_type_k3s_worker" {
+  description = "The EC2 instance type for the k3s worker nodes"
   type        = string
   default     = "m7i-flex.large"
 }
