@@ -1,43 +1,26 @@
 # Infrastructure as Code
 
-Terraform code de tao ha tang AWS cho Jenkins va k3s lab. Terraform state duoc luu tren S3 backend.
+Terraform configuration for an AWS Jenkins and k3s lab. Terraform state is stored in an S3 backend.
 
-## Ha Tang Hien Tai
+## Infrastructure
 
-Hien tai Terraform tao cac thanh phan chinh sau:
+Current resources:
 
-| Resource | Mo ta |
-|----------|-------|
+| Resource | Details |
+|----------|---------|
 | VPC | `10.0.0.0/16` |
 | Public subnet | `10.0.1.0/24` |
-| Internet Gateway + Route Table | Cho phep truy cap internet |
 | Jenkins server | EC2 `10.0.1.10`, ports `22`, `8080` |
 | Jenkins agent | EC2 `10.0.1.11`, port `22` |
-| k3s control-plane | EC2 `10.0.1.13`, ports `22`, `6443`, `30080`, `30443` |
+| k3s control plane | EC2 `10.0.1.13`, ports `22`, `6443`, `30080`, `30443` |
 | k3s worker 1 | EC2 `10.0.1.12`, ports `22`, `30080`, `30443` |
 | k3s worker 2 | EC2 `10.0.1.14`, ports `22`, `30080`, `30443` |
 
-Tat ca EC2 dung Elastic IP rieng, security group rieng, EBS gp3 encrypted va IMDSv2.
+Each EC2 instance has its own security group, Elastic IP, encrypted gp3 root volume, and IMDSv2 enabled.
 
-## Project Structure
+## State Backend
 
-```text
-IaC/
-├── main.tf
-├── variables.tf
-├── outputs.tf
-├── terraform.tfvars
-├── module/
-│   ├── vpc/
-│   └── ec2/
-└── .github/workflows/
-    ├── terraform.yml
-    └── ec2-power-state.yml
-```
-
-## Terraform State
-
-State duoc luu tren S3:
+Terraform state is stored in S3:
 
 ```hcl
 bucket         = "bucket-project-devops-tfstate"
@@ -47,61 +30,39 @@ dynamodb_table = "terraform-state-lock"
 encrypt        = true
 ```
 
-State tren S3 giup Terraform biet resource nao da duoc tao, tu do update/destroy dung resource thay vi tao lung tung.
+## Workflows
 
-## Workflow 1: Terraform Infra
+### Terraform Infra
 
 File: `.github/workflows/terraform.yml`
 
-Workflow nay dung de tao, cap nhat hoac xoa ha tang bang Terraform.
+Use this workflow to create, update, or destroy infrastructure.
 
-### Khi nao chay?
+Manual options:
 
-| Trigger | Hanh dong |
-|---------|-----------|
-| Push vao `main` co thay doi `*.tf` hoac `*.tfvars` | Chay format, scan, plan |
-| Pull request vao `main` | Chay format, scan, plan |
-| Manual `apply` | Tao/cap nhat ha tang |
-| Manual `destroy` | Xoa ha tang |
+| Action | Result |
+|--------|--------|
+| `apply` | Creates or updates infrastructure |
+| `destroy` | Destroys infrastructure |
 
-### Cac buoc chinh
+Pushes and pull requests only run checks and `terraform plan`; they do not apply changes.
 
-```text
-Checkout code
-Configure AWS credentials
-Setup Terraform
-terraform init
-terraform fmt -check
-Checkov scan
-terraform plan -out=tfplan
-Block accidental EC2 replacement
-terraform apply hoac terraform destroy
-```
+The workflow blocks EC2 replacement by default. If a plan wants to delete and recreate an EC2 instance, the workflow stops and prints the affected instance details.
 
-### Luu y
-
-- `terraform init` la bat buoc tren GitHub Actions vi runner moi chua co backend/provider.
-- Push/PR chi plan, khong apply.
-- Chi manual `apply` moi tao hoac cap nhat ha tang.
-- Chi manual `destroy` moi xoa ha tang.
-- Step `Block accidental EC2 replacement` se chan neu plan muon xoa roi tao lai EC2, tru khi bat `allow_instance_replace=true`.
-
-## Workflow 2: EC2 Power State
+### EC2 Power State
 
 File: `.github/workflows/ec2-power-state.yml`
 
-Workflow nay chi dung de bat hoac tat EC2 da ton tai. No khong dung Terraform.
+Use this workflow only to start or stop existing EC2 instances. It does not run Terraform and cannot create, recreate, or destroy infrastructure.
 
-### Input
+Manual options:
 
-| Input | Gia tri |
-|-------|---------|
-| `action` | `start` hoac `stop` |
-| `project_name` | Mac dinh `jenkins-share-lib-project` |
+| Action | Result |
+|--------|--------|
+| `start` | Starts all stopped project EC2 instances |
+| `stop` | Stops all running project EC2 instances |
 
-### Instance duoc dieu khien
-
-Workflow luon start/stop tat ca EC2 sau:
+Managed EC2 names:
 
 ```text
 jenkins-share-lib-project-jenkins_server
@@ -111,42 +72,28 @@ jenkins-share-lib-project-k3s_worker_1
 jenkins-share-lib-project-k3s_worker_2
 ```
 
-### Cach hoat dong
+## Usage
+
+Create or update infrastructure:
 
 ```text
-Neu action = start:
-  Tim cac instance dang stopped
-  Goi aws ec2 start-instances
-
-Neu action = stop:
-  Tim cac instance dang running
-  Goi aws ec2 stop-instances
+GitHub Actions -> Terraform Infra -> Run workflow -> apply
 ```
 
-Workflow nay khong chay `terraform init`, `terraform plan`, `terraform apply` hay `terraform destroy`, nen no khong tao lai instance va khong xoa ha tang.
-
-## Cach Dung Nhanh
-
-Tao hoac cap nhat ha tang:
+Destroy infrastructure:
 
 ```text
-GitHub Actions -> Terraform Infra -> Run workflow -> action: apply
+GitHub Actions -> Terraform Infra -> Run workflow -> destroy
 ```
 
-Xoa ha tang:
+Stop all EC2 instances:
 
 ```text
-GitHub Actions -> Terraform Infra -> Run workflow -> action: destroy
+GitHub Actions -> EC2 Power State -> Run workflow -> stop
 ```
 
-Tat toan bo EC2:
+Start all EC2 instances:
 
 ```text
-GitHub Actions -> EC2 Power State -> Run workflow -> action: stop
-```
-
-Bat lai toan bo EC2:
-
-```text
-GitHub Actions -> EC2 Power State -> Run workflow -> action: start
+GitHub Actions -> EC2 Power State -> Run workflow -> start
 ```

@@ -22,11 +22,6 @@ on:
         options:
           - apply
           - destroy
-      allow_instance_replace:
-        description: 'Keep false for normal apply; set true only when you intentionally want to recreate EC2'
-        required: false
-        default: false
-        type: boolean
 
 permissions:
   contents: read
@@ -59,11 +54,9 @@ jobs:
       env:
         EVENT_NAME: ${{ github.event_name }}
         ACTION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.action || 'plan' }}
-        ALLOW_INSTANCE_REPLACE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.allow_instance_replace || 'false' }}
       run: |
         echo "Event: $EVENT_NAME"
         echo "Terraform action: $ACTION"
-        echo "Allow EC2 replacement: $ALLOW_INSTANCE_REPLACE"
 
     - name: Terraform Init
       run: terraform init
@@ -87,8 +80,6 @@ jobs:
 
     - name: Block accidental EC2 replacement
       if: github.event_name != 'workflow_dispatch' || github.event.inputs.action != 'destroy'
-      env:
-        ALLOW_INSTANCE_REPLACE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.allow_instance_replace || 'false' }}
       run: |
         set -euo pipefail
 
@@ -142,12 +133,7 @@ jobs:
           | join("\n")
           ' tfplan.json >&2
 
-          if [ "$ALLOW_INSTANCE_REPLACE" = "true" ]; then
-            echo "Continuing because allow_instance_replace=true." >&2
-            exit 0
-          fi
-
-          echo "Canceling. Re-run with allow_instance_replace=true only if this is intentional." >&2
+          echo "Canceling. This workflow does not allow EC2 replacement by default." >&2
           exit 1
         fi
 
