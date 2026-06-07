@@ -1,4 +1,5 @@
 name: 'Terraform Infra'
+run-name: Terraform Infra - ${{ github.event_name == 'workflow_dispatch' && inputs.action || 'plan' }}
 
 on:
   push:
@@ -22,8 +23,8 @@ on:
           - apply
           - destroy
       allow_instance_replace:
-        description: 'Allow Terraform to recreate EC2 instances'
-        required: true
+        description: 'Keep false for normal apply; set true only when you intentionally want to recreate EC2'
+        required: false
         default: false
         type: boolean
 
@@ -32,7 +33,7 @@ permissions:
 
 jobs:
   terraform:
-    name: 'Terraform'
+    name: Terraform ${{ github.event_name == 'workflow_dispatch' && inputs.action || 'plan' }}
     runs-on: ubuntu-latest
     environment: production
 
@@ -53,6 +54,16 @@ jobs:
 
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
+
+    - name: Show workflow mode
+      env:
+        EVENT_NAME: ${{ github.event_name }}
+        ACTION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.action || 'plan' }}
+        ALLOW_INSTANCE_REPLACE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.allow_instance_replace || 'false' }}
+      run: |
+        echo "Event: $EVENT_NAME"
+        echo "Terraform action: $ACTION"
+        echo "Allow EC2 replacement: $ALLOW_INSTANCE_REPLACE"
 
     - name: Terraform Init
       run: terraform init
@@ -81,23 +92,61 @@ jobs:
       run: |
         set -euo pipefail
 
-        if [ "$ALLOW_INSTANCE_REPLACE" = "true" ]; then
-          echo "EC2 replacement is explicitly allowed for this run."
-          exit 0
-        fi
-
         terraform show -json tfplan > tfplan.json
 
-        replacements=$(jq -r '
+        replacement_count=$(jq -r '
+          [
+            .resource_changes[]?
+            | select(.type == "aws_instance")
+            | select((.change.actions | index("delete")) and (.change.actions | index("create")))
+          ]
+          | length
+        ' tfplan.json)
+
+        if [ "$replacement_count" -gt 0 ]; then
+          echo "Terraform plan wants to recreate EC2 instances:" >&2
+
+          jq -r '
           .resource_changes[]?
           | select(.type == "aws_instance")
           | select((.change.actions | index("delete")) and (.change.actions | index("create")))
-          | .address
-        ' tfplan.json)
+          | {
+              address: .address,
+              action_reason: (.action_reason // "-"),
+              name_before: (.change.before.tags.Name // "-"),
+              name_after: (.change.after.tags.Name // "-"),
+              instance_id: (.change.before.id // "-"),
+              private_ip_before: (.change.before.private_ip // "-"),
+              private_ip_after: (.change.after.private_ip // "-"),
+              instance_type_before: (.change.before.instance_type // "-"),
+              instance_type_after: (.change.after.instance_type // "-"),
+              ami_before: (.change.before.ami // "-"),
+              ami_after: (.change.after.ami // "-"),
+              replace_paths: (
+                (.change.replace_paths // [])
+                | map(map(tostring) | join("."))
+                | join(", ")
+              )
+            }
+          | [
+              "",
+              "Resource: \(.address)",
+              "Name tag: \(.name_before) -> \(.name_after)",
+              "Instance ID: \(.instance_id)",
+              "Private IP: \(.private_ip_before) -> \(.private_ip_after)",
+              "Instance type: \(.instance_type_before) -> \(.instance_type_after)",
+              "AMI: \(.ami_before) -> \(.ami_after)",
+              "Reason: \(.action_reason)",
+              "Replace paths: \(if .replace_paths == "" then "-" else .replace_paths end)"
+            ]
+          | join("\n")
+          ' tfplan.json >&2
 
-        if [ -n "$replacements" ]; then
-          echo "Terraform plan wants to recreate EC2 instances:" >&2
-          echo "$replacements" >&2
+          if [ "$ALLOW_INSTANCE_REPLACE" = "true" ]; then
+            echo "Continuing because allow_instance_replace=true." >&2
+            exit 0
+          fi
+
           echo "Canceling. Re-run with allow_instance_replace=true only if this is intentional." >&2
           exit 1
         fi
