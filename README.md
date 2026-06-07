@@ -18,6 +18,25 @@ Current resources:
 
 Each EC2 instance has its own security group, Elastic IP, encrypted gp3 root volume, and IMDSv2 enabled.
 
+## Network Topology
+
+```text
+AWS Region: ap-southeast-1
+
+VPC: 10.0.0.0/16
++-- Public Subnet: 10.0.1.0/24
+    +-- Jenkins server     10.0.1.10   ports 22, 8080
+    +-- Jenkins agent      10.0.1.11   port 22
+    +-- k3s worker 1       10.0.1.12   ports 22, 30080, 30443
+    +-- k3s control plane  10.0.1.13   ports 22, 6443, 30080, 30443
+    +-- k3s worker 2       10.0.1.14   ports 22, 30080, 30443
+
+Internet
++-- Internet Gateway
+    +-- Route Table: 0.0.0.0/0
+        +-- Public Subnet
+```
+
 ## State Backend
 
 Terraform state is stored in S3:
