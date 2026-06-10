@@ -1,147 +1,220 @@
-# Infrastructure as Code — AWS DevOps Lab
+# Infrastructure as Code - AWS DevOps Lab
 
-Terraform code to provision AWS infrastructure for a DevOps pipeline (Jenkins and a 3-node k3s cluster). State is stored in S3 and managed via GitHub Actions.
+Terraform code for an AWS DevOps lab with Jenkins, a single-node k3s dev cluster, and a 2-node k3s prod cluster.
 
-## Architecture
+State is stored in S3 and locked with DynamoDB. GitHub Actions is used for plan checks, first-time apply, destroy, and EC2 power control.
+
+## Topology
 
 ```
-+----------------------------------------------------------------------------+
-| AWS Region: ap-southeast-1                                                 |
-|                                                                            |
-| +--------------------------- VPC: 10.0.0.0/16 ---------------------------+ |
-| |                                                                        | |
-| | +-------------------- Public Subnet: 10.0.1.0/24 --------------------+ | |
-| | |                                                                    | | |
-| | |  +----------------------+      +----------------------+            | | |
-| | |  | Jenkins Server       |      | Jenkins Agent        |            | | |
-| | |  | IP: 10.0.1.10        |      | IP: 10.0.1.11        |            | | |
-| | |  | Ports: 22, 8080      |      | Ports: 22            |            | | |
-| | |  | EIP                  |      | EIP                  |            | | |
-| | |  +----------------------+      +----------------------+            | | |
-| | |                                                                    | | |
-| | |  +----------------------+      +----------------------+            | | |
-| | |  | k3s Worker 1         |      | k3s Control Plane    |            | | |
-| | |  | IP: 10.0.1.12        |      | IP: 10.0.1.13        |            | | |
-| | |  | Ports: 22, 30080,    |      | Ports: 22, 6443,     |            | | |
-| | |  |        30443         |      |        30080, 30443  |            | | |
-| | |  | EIP                  |      | EIP                  |            | | |
-| | |  +----------------------+      +----------------------+            | | |
-| | |                                                                    | | |
-| | |  +----------------------+                                          | | |
-| | |  | k3s Worker 2         |                                          | | |
-| | |  | IP: 10.0.1.14        |                                          | | |
-| | |  | Ports: 22, 30080,    |                                          | | |
-| | |  |        30443         |                                          | | |
-| | |  | EIP                  |                                          | | |
-| | |  +----------------------+                                          | | |
-| | |                                                                    | | |
-| | +--------------------------------------------------------------------+ | |
-| |                                                                        | |
-| | Route Table: 0.0.0.0/0 -> Internet Gateway                             | |
-| +------------------------------------------------------------------------+ |
-|                                                                            |
-| Internet Gateway -> Internet                                               |
-+----------------------------------------------------------------------------+
++--------------------------------------------------------------------------------+
+| AWS Region: ap-southeast-1                                                     |
+|                                                                                |
+| +----------------------------- VPC: 10.0.0.0/16 -----------------------------+ |
+| |                                                                            | |
+| | +---------------------- Public Subnet: 10.0.1.0/24 ----------------------+ | |
+| | |                                                                        | | |
+| | |  +----------------------+        +----------------------+              | | |
+| | |  | Jenkins Server       |        | Jenkins Agent        |              | | |
+| | |  | 10.0.1.10            |        | 10.0.1.11            |              | | |
+| | |  | t2.small             |        | t2.micro             |              | | |
+| | |  | 22, 8080             |        | 22                   |              | | |
+| | |  +----------------------+        +----------------------+              | | |
+| | |                                                                        | | |
+| | |  +----------------------+                                              | | |
+| | |  | k3s Dev              |                                              | | |
+| | |  | 10.0.1.12            |                                              | | |
+| | |  | t2.small             |                                              | | |
+| | |  | 22, 6443, 30080,     |                                              | | |
+| | |  | 30443                |                                              | | |
+| | |  +----------------------+                                              | | |
+| | |                                                                        | | |
+| | |  +----------------------+        +----------------------+              | | |
+| | |  | k3s Prod Master      |        | k3s Prod Worker      |              | | |
+| | |  | 10.0.1.13            |        | 10.0.1.14            |              | | |
+| | |  | t2.medium            |        | t2.medium            |              | | |
+| | |  | Public: 22, 6443,    |        | Public: 22, 6443,    |              | | |
+| | |  | 30080, 30443         |        | 30080, 30443         |              | | |
+| | |  | Private: TCP 2379,   |        | Private: TCP 2379,   |              | | |
+| | |  | 2380, 10250; UDP     |        | 2380, 10250; UDP     |              | | |
+| | |  | 8472                 |        | 8472                 |              | | |
+| | |  +----------------------+        +----------------------+              | | |
+| | |                                                                        | | |
+| | +------------------------------------------------------------------------+ | |
+| |                                                                            | |
+| | Route Table: 0.0.0.0/0 -> Internet Gateway                                 | |
+| +----------------------------------------------------------------------------+ |
+|                                                                                |
+| Internet Gateway -> Internet                                                   |
++--------------------------------------------------------------------------------+
 ```
 
-**Each instance:** `m7i-flex.large` (2 vCPU · 8 GB RAM) · EBS gp3 encrypted · IMDSv2 · Dedicated Security Group · Static Elastic IP
+| Module | Instance type | vCPU | Private IP | Public ingress | Private ingress |
+|--------|---------------|------|------------|----------------|-----------------|
+| `jenkins_server` | `t2.small` | 1 | `10.0.1.10` | `22`, `8080` | - |
+| `jenkins_agent` | `t2.micro` | 1 | `10.0.1.11` | `22` | - |
+| `k3s_dev` | `t2.small` | 1 | `10.0.1.12` | `22`, `6443`, `30080`, `30443` | - |
+| `k3s_prod_master` | `t2.medium` | 2 | `10.0.1.13` | `22`, `6443`, `30080`, `30443` | TCP `2379`, `2380`, `10250`; UDP `8472` |
+| `k3s_prod_worker` | `t2.medium` | 2 | `10.0.1.14` | `22`, `6443`, `30080`, `30443` | TCP `2379`, `2380`, `10250`; UDP `8472` |
 
-## Project Structure
+The topology uses 7 project vCPUs. It fits inside an 8 vCPU EC2 On-Demand Standard quota if no other matching instances are already running in the region.
+
+## Repository
 
 ```
 IaC/
-├── main.tf              # S3 backend + module calls
-├── variables.tf
-├── outputs.tf
-├── terraform.tfvars     # ← edit this (do not commit secrets)
-├── module/
-│   ├── vpc/             # VPC, Subnet, IGW, Route Table
-│   └── ec2/             # SG, EIP, EC2
-└── .github/workflows/
-    ├── terraform.yml        # create/update/destroy infrastructure
-    └── ec2-power-state.yml  # start/stop existing EC2 instances
+|-- main.tf
+|-- variables.tf
+|-- outputs.tf
+|-- terraform.tfvars
+|-- module/
+|   |-- vpc/
+|   `-- ec2/
+|-- scripts/
+|   |-- common/
+|   |-- jenkins/
+|   `-- k3s/
+`-- .github/workflows/
+    |-- terraform.yml
+    `-- ec2-power-state.yml
 ```
 
-## Setup (one-time)
+## Initial Provision
 
-### 1. Create S3 backend resources
+Run Terraform only for the first provision, or when you intentionally accept infrastructure changes. Do not use `terraform apply` to start or stop EC2 instances after they already exist.
+
+Before applying, verify that the selected backend state is correct:
 
 ```bash
-BUCKET="bucket-project-devops-tfstate"   # must be globally unique
-REGION="ap-southeast-1"
-
-aws s3api create-bucket --bucket $BUCKET --region $REGION \
-  --create-bucket-configuration LocationConstraint=$REGION
-aws s3api put-bucket-versioning --bucket $BUCKET \
-  --versioning-configuration Status=Enabled
-aws s3api put-public-access-block --bucket $BUCKET \
-  --public-access-block-configuration "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
-aws dynamodb create-table --table-name terraform-state-lock \
-  --attribute-definitions AttributeName=LockID,AttributeType=S \
-  --key-schema AttributeName=LockID,KeyType=HASH \
-  --billing-mode PAY_PER_REQUEST --region $REGION
+terraform init
+terraform state list
 ```
 
-### 2. Add GitHub Secrets
+If `terraform state list` is empty but the EC2 instances already exist in AWS, stop. The backend/key is not pointing at the state that owns those resources, or the resources need to be imported. Running `terraform apply` in that condition can create duplicate EC2 instances.
 
-**Settings → Secrets and variables → Actions:**
+Provision flow:
+
+```bash
+terraform init
+terraform fmt -recursive
+terraform validate
+terraform plan -out tfplan
+terraform apply tfplan
+terraform output
+```
+
+## GitHub Actions
+
+### Terraform Infra
+
+Workflow file: `.github/workflows/terraform.yml`
+
+This workflow is for safe Terraform review, first-time apply, and full teardown. Start/stop is handled by the separate `EC2 Power State` workflow.
+
+Triggers:
+
+| Trigger | Behavior |
+|---------|----------|
+| Pull request to `main` | Runs init, fmt check, Checkov, Terraform plan, then blocks EC2 lifecycle changes |
+| Push to `main` | Runs init, fmt check, Checkov, Terraform plan, then blocks EC2 lifecycle changes |
+| Manual dispatch `apply` | Runs init, fmt check, Checkov, Terraform plan, EC2 lifecycle guard, then applies |
+| Manual dispatch `destroy` | Runs init, then destroys Terraform-managed infrastructure |
+
+The EC2 guard reads `tfplan` as JSON. It allows the first EC2 creation when Terraform state has no EC2 instances. After EC2 instances exist in state, it fails the workflow if any `aws_instance` would be created, updated, deleted, or replaced, unless the manual override `allow_ec2_lifecycle_changes=true` is selected.
+
+Allowed through this workflow:
+
+| Operation | Allowed |
+|-----------|---------|
+| Review Terraform plan | Yes |
+| Create EC2 during first provision | Yes |
+| Destroy all Terraform-managed infrastructure | Yes, manual `destroy` only |
+| Create EC2 after initial setup | No, unless explicitly overridden |
+| Update EC2 after initial setup | No, unless explicitly overridden |
+| Replace EC2 after initial setup | No, unless explicitly overridden |
+| Start/stop EC2 | No, use `EC2 Power State` |
+
+Manual first apply:
+
+1. Open GitHub Actions.
+2. Select `Terraform Infra`.
+3. Select `Run workflow`.
+4. Choose `apply`.
+5. Keep `allow_ec2_lifecycle_changes=false` for the first provision.
+
+Manual destroy:
+
+1. Open GitHub Actions.
+2. Select `Terraform Infra`.
+3. Select `Run workflow`.
+4. Choose `destroy`.
+
+### EC2 Power State
+
+Workflow file: `.github/workflows/ec2-power-state.yml`
+
+This workflow starts or stops existing EC2 instances by their `Name` tags. It uses AWS CLI only and does not run Terraform.
+
+Target EC2 names:
+
+```text
+<project_name>-jenkins_server
+<project_name>-jenkins_agent
+<project_name>-k3s_dev
+<project_name>-k3s_prod_master
+<project_name>-k3s_prod_worker
+```
+
+Inputs:
+
+| Input | Example value | Description |
+|-------|---------------|-------------|
+| `action` | `stop` | `start` or `stop` |
+| `project_name` | `jenkins-share-lib-project` | Prefix used in the EC2 `Name` tag |
+
+Behavior:
+
+| Action | AWS state filter | AWS CLI command |
+|--------|------------------|-----------------|
+| `start` | `stopped` | `aws ec2 start-instances` |
+| `stop` | `running` | `aws ec2 stop-instances` |
+
+If no instances match the requested state, the workflow exits successfully without changing anything.
+
+## GitHub Secrets
+
+Configure these in `Settings -> Secrets and variables -> Actions`:
 
 | Secret | Value |
 |--------|-------|
-| `AWS_ACCESS_KEY_ID` | IAM Access Key |
-| `AWS_SECRET_ACCESS_KEY` | IAM Secret Key |
+| `AWS_ACCESS_KEY_ID` | IAM access key |
+| `AWS_SECRET_ACCESS_KEY` | IAM secret key |
 | `AWS_REGION` | `ap-southeast-1` |
 
-The IAM user needs: `AmazonEC2FullAccess`, `AmazonVPCFullAccess`, and S3/DynamoDB access to the backend bucket.
+The IAM identity needs EC2/VPC permissions and S3/DynamoDB permissions for the Terraform backend.
 
-### 3. Configure terraform.tfvars
+## Outputs
 
-```hcl
-aim_id       = "ami-xxxxxxxxxxxxxxxxx"   # Ubuntu 22.04 in ap-southeast-1
-project_name = "devops-project"
-key_name     = "your-key-pair-name"
-```
+After initial provision:
 
-Find the latest Ubuntu 22.04 AMI:
 ```bash
-aws ec2 describe-images --owners 099720109477 --region ap-southeast-1 \
-  --filters "Name=name,Values=ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*" \
-  --query "sort_by(Images, &CreationDate)[-1].ImageId" --output text
+terraform output
 ```
 
-## CI/CD Pipeline
+Useful endpoints:
 
-| Trigger | What runs |
-|---------|-----------|
-| Pull Request → `main` | Init → fmt → Checkov → Plan |
-| Push → `main` | Init → fmt → Checkov → Plan |
-| Manual `apply` | → Plan → **Apply infra changes** |
-| Manual `destroy` | → **Destroy infra** |
-| Manual `EC2 Power State` `start` | Start existing EC2 instances by `Name` tag |
-| Manual `EC2 Power State` `stop` | Stop existing EC2 instances by `Name` tag |
+| Service | Output |
+|---------|--------|
+| Jenkins UI | `http://$(terraform output -raw jenkins_server_public_ip):8080` |
+| k3s dev API | `https://$(terraform output -raw k3s_dev_public_ip):6443` |
+| k3s dev NodePort HTTP | `http://$(terraform output -raw k3s_dev_public_ip):30080` |
+| k3s dev NodePort HTTPS | `https://$(terraform output -raw k3s_dev_public_ip):30443` |
+| k3s prod public IPs | `terraform output k3s_prod_public_ips` |
 
-**Infra trigger:** Actions → Terraform Infra → Run workflow → choose action.
-By default, the infra workflow blocks EC2 replacement. Use `allow_instance_replace=true` only when you intentionally want to recreate EC2 instances.
+## Notes
 
-**EC2 power trigger:** Actions → EC2 Power State → Run workflow → choose `start` or `stop`.
-This workflow uses AWS CLI only. It does not run `terraform apply`, so it cannot recreate instances.
-
-## How S3 State Works
-
-```
-terraform init   → downloads state from S3 (knows what already exists)
-terraform plan   → diffs state vs code → shows only what changes
-terraform apply  → applies changes → uploads new state to S3
-```
-
-DynamoDB prevents two workflows from running apply simultaneously (state locking).
-
-## Common Errors
-
-| Error | Fix |
-|-------|-----|
-| `NoSuchBucket` | Run the S3 setup commands above |
-| `VpcLimitExceeded` | Delete unused VPCs in Console → VPC |
-| `AddressLimitExceeded` | Release unassociated EIPs in Console → EC2 → Elastic IPs |
-| `reserved address range` | Subnet IPs must be ≥ `10.0.1.4` (first 4 are reserved by AWS) |
-| `couldn't find resource` | AMI ID is wrong for this region — use the CLI command above |
+- Terraform version: `>= 1.1`
+- Backend bucket: `bucket-project-devops-tfstate`
+- Backend lock table: `terraform-state-lock`
+- AWS region: `ap-southeast-1`
+- AWS key pair: `jenkins-share-lib`

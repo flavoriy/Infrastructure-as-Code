@@ -5,13 +5,17 @@ on:
   push:
     branches: [ "main" ]
     paths:
-      - "**.tf"
-      - "**.tfvars"
+      - "*.tf"
+      - "*.tfvars"
+      - "**/*.tf"
+      - "**/*.tfvars"
   pull_request:
     branches: [ "main" ]
     paths:
-      - "**.tf"
-      - "**.tfvars"
+      - "*.tf"
+      - "*.tfvars"
+      - "**/*.tf"
+      - "**/*.tfvars"
   workflow_dispatch:
     inputs:
       action:
@@ -22,6 +26,11 @@ on:
         options:
           - apply
           - destroy
+      allow_ec2_lifecycle_changes:
+        description: 'Allow EC2 create/update/delete/replace after initial provision'
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -62,7 +71,7 @@ jobs:
       run: terraform init
 
     - name: Terraform Format
-      run: terraform fmt -check
+      run: terraform fmt -check -recursive
 
     - name: Run Checkov Security Scan
       if: github.event_name != 'workflow_dispatch' || github.event.inputs.action != 'destroy'
@@ -78,31 +87,69 @@ jobs:
       if: github.event_name != 'workflow_dispatch' || github.event.inputs.action != 'destroy'
       run: terraform plan -input=false -out=tfplan
 
-    - name: Block accidental EC2 replacement
+    - name: Guard EC2 lifecycle changes
       if: github.event_name != 'workflow_dispatch' || github.event.inputs.action != 'destroy'
+      env:
+        ALLOW_EC2_LIFECYCLE_CHANGES: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.allow_ec2_lifecycle_changes || 'false' }}
       run: |
         set -euo pipefail
 
         terraform show -json tfplan > tfplan.json
 
-        replacement_count=$(jq -r '
+        existing_instance_count=$(jq -r '
+          def module_resources(m):
+            ((m.resources // []) + ((((m.child_modules // []) | map(module_resources(.))) | add) // []));
+
           [
-            .resource_changes[]?
+            module_resources(.prior_state.values.root_module // {})[]
             | select(.type == "aws_instance")
-            | select((.change.actions | index("delete")) and (.change.actions | index("create")))
           ]
           | length
         ' tfplan.json)
 
-        if [ "$replacement_count" -gt 0 ]; then
-          echo "Terraform plan wants to recreate EC2 instances:" >&2
+        instance_change_count=$(jq -r '
+          [
+            .resource_changes[]?
+            | select(.type == "aws_instance")
+            | select(.change.actions != ["no-op"])
+          ]
+          | length
+        ' tfplan.json)
 
-          jq -r '
+        non_create_instance_change_count=$(jq -r '
+          [
+            .resource_changes[]?
+            | select(.type == "aws_instance")
+            | select(.change.actions != ["no-op"])
+            | select(.change.actions != ["create"])
+          ]
+          | length
+        ' tfplan.json)
+
+        if [ "$instance_change_count" -eq 0 ]; then
+          echo "No EC2 lifecycle changes detected."
+          exit 0
+        fi
+
+        if [ "$ALLOW_EC2_LIFECYCLE_CHANGES" = "true" ]; then
+          echo "EC2 lifecycle changes allowed by manual input."
+          exit 0
+        fi
+
+        if [ "$existing_instance_count" -eq 0 ] && [ "$non_create_instance_change_count" -eq 0 ]; then
+          echo "Initial EC2 creation allowed because Terraform state has no EC2 instances."
+          exit 0
+        fi
+
+        echo "Terraform plan includes EC2 lifecycle changes after EC2 instances already exist:" >&2
+
+        jq -r '
           .resource_changes[]?
           | select(.type == "aws_instance")
-          | select((.change.actions | index("delete")) and (.change.actions | index("create")))
+          | select(.change.actions != ["no-op"])
           | {
               address: .address,
+              actions: (.change.actions | join(",")),
               action_reason: (.action_reason // "-"),
               name_before: (.change.before.tags.Name // "-"),
               name_after: (.change.after.tags.Name // "-"),
@@ -122,6 +169,7 @@ jobs:
           | [
               "",
               "Resource: \(.address)",
+              "Actions: \(.actions)",
               "Name tag: \(.name_before) -> \(.name_after)",
               "Instance ID: \(.instance_id)",
               "Private IP: \(.private_ip_before) -> \(.private_ip_after)",
@@ -131,11 +179,11 @@ jobs:
               "Replace paths: \(if .replace_paths == "" then "-" else .replace_paths end)"
             ]
           | join("\n")
-          ' tfplan.json >&2
+        ' tfplan.json >&2
 
-          echo "Canceling. This workflow does not allow EC2 replacement by default." >&2
-          exit 1
-        fi
+        echo "Canceling. Use the EC2 Power State workflow for start/stop." >&2
+        echo "For an intentional EC2 lifecycle change, rerun the manual workflow with allow_ec2_lifecycle_changes=true." >&2
+        exit 1
 
     - name: Terraform Apply (manual trigger)
       if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply'

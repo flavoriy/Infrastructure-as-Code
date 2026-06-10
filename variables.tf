@@ -53,31 +53,43 @@ variable "ingress_ports_jenkins_agent" {
 variable "volume_size_jenkins_agent" {
   description = "The size of the root EBS volume for the Jenkins agent (in GB)"
   type        = number
-  default     = 20
+  default     = 10
 }
 
-variable "ingress_ports_k3s" {
-  description = "List of ingress ports for the k3s server"
+variable "ingress_ports_k3s_dev" {
+  description = "List of public ingress ports for the dev single-node k3s server"
   type        = list(number)
-  default     = [22, 6443]
+  default     = [22, 6443, 30080, 30443]
 }
 
-variable "volume_size_k3s" {
-  description = "The size of the root EBS volume for the k3s server (in GB)"
+variable "volume_size_k3s_dev" {
+  description = "The size of the root EBS volume for the dev k3s server (in GB)"
   type        = number
-  default     = 20
+  default     = 15
 }
 
-variable "ingress_ports_k3s_worker" {
-  description = "List of ingress ports for the k3s worker nodes"
+variable "ingress_ports_k3s_prod" {
+  description = "List of public ingress ports for each prod k3s server"
   type        = list(number)
-  default     = [22]
+  default     = [22, 6443, 30080, 30443]
 }
 
-variable "volume_size_k3s_worker" {
-  description = "The size of the root EBS volume for each k3s worker node (in GB)"
+variable "private_ingress_ports_k3s_prod" {
+  description = "List of private ingress ports for k3s HA server-to-server traffic"
+  type        = list(number)
+  default     = [2379, 2380, 10250]
+}
+
+variable "private_ingress_udp_ports_k3s_prod" {
+  description = "List of private UDP ingress ports for k3s pod networking"
+  type        = list(number)
+  default     = [8472]
+}
+
+variable "volume_size_k3s_prod" {
+  description = "The size of the root EBS volume for each prod k3s server (in GB)"
   type        = number
-  default     = 20
+  default     = 15
 }
 
 variable "key_name" {
@@ -89,23 +101,23 @@ variable "key_name" {
 variable "instance_type_jenkins_server" {
   description = "The EC2 instance type for the Jenkins server"
   type        = string
-  default     = "m7i-flex.large"
+  default     = "t2.small"
 }
 
 variable "instance_type_jenkins_agent" {
   description = "The EC2 instance type for the Jenkins agent"
   type        = string
-  default     = "m7i-flex.large"
+  default     = "t2.micro"
 }
 
-variable "instance_type_k3s" {
-  description = "The EC2 instance type for the k3s server"
+variable "instance_type_k3s_dev" {
+  description = "The EC2 instance type for the dev k3s server"
   type        = string
-  default     = "m7i-flex.large"
+  default     = "t2.small"
 }
 
-variable "instance_type_k3s_worker" {
-  description = "The EC2 instance type for the k3s worker nodes"
+variable "instance_type_k3s_prod" {
+  description = "The EC2 instance type for each prod k3s server"
   type        = string
-  default     = "m7i-flex.large"
+  default     = "t2.small"
 }

@@ -21,7 +21,7 @@ variable "aws_ami_id" {
 variable "aws_instance_type" {
   description = "The EC2 instance type"
   type        = string
-  default     = "m7i-flex.large"
+  default     = "t2.small"
 }
 
 variable "key_name" {
@@ -44,9 +44,26 @@ variable "ingress_ports" {
   type        = list(number)
 }
 
+variable "private_ingress_ports" {
+  description = "List of TCP ingress ports to allow only from private CIDR blocks"
+  type        = list(number)
+  default     = []
+}
+
+variable "private_ingress_udp_ports" {
+  description = "List of UDP ingress ports to allow only from private CIDR blocks"
+  type        = list(number)
+  default     = []
+}
+
+variable "private_ingress_cidr_blocks" {
+  description = "Private CIDR blocks allowed to reach private ingress ports"
+  type        = list(string)
+  default     = []
+}
+
 variable "volume_size" {
   description = "The size of the root EBS volume in GB"
   type        = number
   default     = 20
 }
-

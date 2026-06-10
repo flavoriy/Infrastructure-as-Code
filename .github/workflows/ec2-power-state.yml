@@ -45,9 +45,9 @@ jobs:
           names=(
             "$PROJECT_NAME-jenkins_server"
             "$PROJECT_NAME-jenkins_agent"
-            "$PROJECT_NAME-k3s"
-            "$PROJECT_NAME-k3s_worker_1"
-            "$PROJECT_NAME-k3s_worker_2"
+            "$PROJECT_NAME-k3s_dev"
+            "$PROJECT_NAME-k3s_prod_master"
+            "$PROJECT_NAME-k3s_prod_worker"
           )
 
           case "$ACTION" in

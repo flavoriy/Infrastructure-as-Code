@@ -7,11 +7,33 @@ resource "aws_security_group" "sg" {
   dynamic "ingress" {
     for_each = var.ingress_ports
     content {
-      description = "Allow port ${ingress.value}"
+      description = "Allow public port ${ingress.value}"
       from_port   = ingress.value
       to_port     = ingress.value
       protocol    = "tcp"
       cidr_blocks = ["0.0.0.0/0"]
+    }
+  }
+
+  dynamic "ingress" {
+    for_each = var.private_ingress_ports
+    content {
+      description = "Allow private TCP port ${ingress.value}"
+      from_port   = ingress.value
+      to_port     = ingress.value
+      protocol    = "tcp"
+      cidr_blocks = var.private_ingress_cidr_blocks
+    }
+  }
+
+  dynamic "ingress" {
+    for_each = var.private_ingress_udp_ports
+    content {
+      description = "Allow private UDP port ${ingress.value}"
+      from_port   = ingress.value
+      to_port     = ingress.value
+      protocol    = "udp"
+      cidr_blocks = var.private_ingress_cidr_blocks
     }
   }
 
@@ -46,7 +68,6 @@ resource "aws_instance" "ec2" {
   subnet_id                   = var.subnet_id
   private_ip                  = var.private_ip
   associate_public_ip_address = false
-  ebs_optimized               = true
   monitoring                  = true
 
   metadata_options {
@@ -71,5 +92,3 @@ resource "aws_eip_association" "eip_assoc" {
   instance_id   = aws_instance.ec2.id
   allocation_id = aws_eip.eip.id
 }
-
-

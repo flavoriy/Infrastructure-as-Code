@@ -1,5 +1,5 @@
 terraform {
-  required_version = ">= 1.0"
+  required_version = ">= 1.1"
 
   backend "s3" {
     bucket         = "bucket-project-devops-tfstate"
@@ -52,46 +52,52 @@ module "jenkins_agent" {
   volume_size       = var.volume_size_jenkins_agent
 }
 
-module "k3s_worker_1" {
-  instance_name     = "k3s_worker_1"
+module "k3s_dev" {
+  instance_name     = "k3s_dev"
   source            = "./module/ec2"
   vpc_id            = module.vpc.vpc_id
   project_name      = var.project_name
   aws_ami_id        = var.aim_id
-  aws_instance_type = var.instance_type_k3s_worker
+  aws_instance_type = var.instance_type_k3s_dev
   key_name          = var.key_name
   subnet_id         = module.vpc.subnet_id
   private_ip        = var.subnet_ip[2]
-  ingress_ports     = var.ingress_ports_k3s_worker
-  volume_size       = var.volume_size_k3s_worker
+  ingress_ports     = var.ingress_ports_k3s_dev
+  volume_size       = var.volume_size_k3s_dev
 }
 
 
 
-module "k3s" {
-  instance_name     = "k3s"
-  source            = "./module/ec2"
-  vpc_id            = module.vpc.vpc_id
-  project_name      = var.project_name
-  aws_ami_id        = var.aim_id
-  aws_instance_type = var.instance_type_k3s
-  key_name          = var.key_name
-  subnet_id         = module.vpc.subnet_id
-  private_ip        = var.subnet_ip[3]
-  ingress_ports     = var.ingress_ports_k3s
-  volume_size       = var.volume_size_k3s
+module "k3s_prod_master" {
+  instance_name               = "k3s_prod_master"
+  source                      = "./module/ec2"
+  vpc_id                      = module.vpc.vpc_id
+  project_name                = var.project_name
+  aws_ami_id                  = var.aim_id
+  aws_instance_type           = var.instance_type_k3s_prod
+  key_name                    = var.key_name
+  subnet_id                   = module.vpc.subnet_id
+  private_ip                  = var.subnet_ip[3]
+  ingress_ports               = var.ingress_ports_k3s_prod
+  private_ingress_ports       = var.private_ingress_ports_k3s_prod
+  private_ingress_udp_ports   = var.private_ingress_udp_ports_k3s_prod
+  private_ingress_cidr_blocks = [var.cidr_block]
+  volume_size                 = var.volume_size_k3s_prod
 }
 
-module "k3s_worker_2" {
-  instance_name     = "k3s_worker_2"
-  source            = "./module/ec2"
-  vpc_id            = module.vpc.vpc_id
-  project_name      = var.project_name
-  aws_ami_id        = var.aim_id
-  aws_instance_type = var.instance_type_k3s_worker
-  key_name          = var.key_name
-  subnet_id         = module.vpc.subnet_id
-  private_ip        = var.subnet_ip[4]
-  ingress_ports     = var.ingress_ports_k3s_worker
-  volume_size       = var.volume_size_k3s_worker
+module "k3s_prod_worker" {
+  instance_name               = "k3s_prod_worker"
+  source                      = "./module/ec2"
+  vpc_id                      = module.vpc.vpc_id
+  project_name                = var.project_name
+  aws_ami_id                  = var.aim_id
+  aws_instance_type           = var.instance_type_k3s_prod
+  key_name                    = var.key_name
+  subnet_id                   = module.vpc.subnet_id
+  private_ip                  = var.subnet_ip[4]
+  ingress_ports               = var.ingress_ports_k3s_prod
+  private_ingress_ports       = var.private_ingress_ports_k3s_prod
+  private_ingress_udp_ports   = var.private_ingress_udp_ports_k3s_prod
+  private_ingress_cidr_blocks = [var.cidr_block]
+  volume_size                 = var.volume_size_k3s_prod
 }
