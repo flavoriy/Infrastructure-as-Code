@@ -61,6 +61,12 @@ variable "ingress_ports" {
   type        = list(number)
 }
 
+variable "public_ingress_cidr_blocks" {
+  description = "CIDR blocks allowed to reach public ingress ports"
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+
 variable "private_ingress_ports" {
   description = "List of TCP ingress ports to allow only from private CIDR blocks"
   type        = list(number)

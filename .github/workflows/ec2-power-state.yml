@@ -54,8 +54,9 @@ jobs:
             "$PROJECT_NAME-jenkins_server"
             "$PROJECT_NAME-jenkins_agent"
             "$PROJECT_NAME-k3s_dev"
-            "$PROJECT_NAME-k3s_prod_master"
-            "$PROJECT_NAME-k3s_prod_worker"
+            "$PROJECT_NAME-k3s_prod_server_1"
+            "$PROJECT_NAME-k3s_prod_server_2"
+            "$PROJECT_NAME-k3s_prod_server_3"
           )
 
           case "$ACTION" in

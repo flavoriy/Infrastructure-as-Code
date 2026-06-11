@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Initializes the first prod k3s server with embedded etcd.
-# K3S_TOKEN must be shared with the second and third prod servers.
-: "${K3S_TOKEN:?Set K3S_TOKEN before running this script. Example: export K3S_TOKEN=$(openssl rand -hex 32)}"
+# Joins the third prod k3s server to the first server's embedded-etcd cluster.
+# Use the same K3S_TOKEN value that was used on k3s-prod-1.
+: "${K3S_TOKEN:?Set K3S_TOKEN to the same token used on k3s-prod-1.}"
 
-PRIVATE_IP="${PRIVATE_IP:-10.0.2.10}"
-NODE_NAME="${NODE_NAME:-k3s-prod-1}"
+PRIVATE_IP="${PRIVATE_IP:-10.0.2.12}"
+NODE_NAME="${NODE_NAME:-k3s-prod-3}"
+SERVER_URL="${SERVER_URL:-https://10.0.2.10:6443}"
 INSTALL_K3S_CHANNEL="${INSTALL_K3S_CHANNEL:-stable}"
 
 # Read EC2 metadata through IMDSv2 so the public EIP can be added as a TLS SAN.
@@ -28,11 +29,11 @@ if [ -n "$PUBLIC_IP" ]; then
   TLS_SAN_FLAGS="${TLS_SAN_FLAGS} --tls-san ${PUBLIC_IP} --node-external-ip ${PUBLIC_IP}"
 fi
 
-# --cluster-init creates the embedded-etcd cluster on the first server.
+# --server points this node at the first prod server so it joins the cluster.
 curl -sfL https://get.k3s.io | \
   K3S_TOKEN="$K3S_TOKEN" \
   INSTALL_K3S_CHANNEL="$INSTALL_K3S_CHANNEL" \
-  INSTALL_K3S_EXEC="server --cluster-init --node-name ${NODE_NAME} --node-ip ${PRIVATE_IP} --advertise-address ${PRIVATE_IP} ${TLS_SAN_FLAGS} --write-kubeconfig-mode 644 --secrets-encryption" \
+  INSTALL_K3S_EXEC="server --server ${SERVER_URL} --node-name ${NODE_NAME} --node-ip ${PRIVATE_IP} --advertise-address ${PRIVATE_IP} ${TLS_SAN_FLAGS} --write-kubeconfig-mode 644 --secrets-encryption" \
   sh -
 
 sudo systemctl enable --now k3s

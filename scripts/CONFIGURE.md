@@ -6,7 +6,7 @@ Terraform chi tao ha tang AWS. Cac script trong thu muc nay cai dat phan mem ben
 
 Dung workflow nhu sau:
 
-1. `Terraform Infra` manual `apply`: tao VPC/subnet/security group/EIP/EC2.
+1. `Terraform Infra` manual `apply`: tao VPC, dev/prod subnets, security groups, EIP, EC2.
 2. Chay cac script cau hinh trong runbook nay tren tung EC2 phu hop.
 3. `EC2 Power State` manual `stop`/`start`: bat tat EC2 da ton tai, khong tao lai instance.
 4. `Terraform Infra` manual `destroy`: huy toan bo ha tang khi khong can lab nua.
@@ -18,12 +18,13 @@ Dung workflow nhu sau:
 | Jenkins controller | `jenkins_server` | `10.0.1.10` | `t2.small` | 15 GB | `22`, `8080` | none | Jenkins UI/controller |
 | Jenkins agent | `jenkins_agent` | `10.0.1.11` | `t2.micro` | 10 GB | `22` | none | Build Docker images and run CI tools |
 | k3s dev | `k3s_dev` | `10.0.1.12` | `t2.small` | 15 GB | `22`, `6443`, `30080`, `30443` | none | Single-node dev cluster |
-| k3s prod master | `k3s_prod_master` | `10.0.1.13` | `t3a.medium` | 20 GB | `22`, `6443`, `30080`, `30443` | TCP `2379`, `2380`, `10250`; UDP `8472` | First prod server node |
-| k3s prod second server | `k3s_prod_worker` | `10.0.1.14` | `t3a.medium` | 20 GB | `22`, `6443`, `30080`, `30443` | TCP `2379`, `2380`, `10250`; UDP `8472` | Second prod server node |
+| k3s prod server 1 | `k3s_prod_server_1` | `10.0.2.10` | `t3a.medium` | 20 GB | `22`, `6443`, `30080`, `30443` | From `10.0.2.0/24`: TCP `6443`, `2379`, `2380`, `10250`; UDP `8472` | First prod server node |
+| k3s prod server 2 | `k3s_prod_server_2` | `10.0.2.11` | `t3a.medium` | 20 GB | `22`, `6443`, `30080`, `30443` | From `10.0.2.0/24`: TCP `6443`, `2379`, `2380`, `10250`; UDP `8472` | Second prod server node |
+| k3s prod server 3 | `k3s_prod_server_3` | `10.0.2.12` | `t3a.medium` | 20 GB | `22`, `6443`, `30080`, `30443` | From `10.0.2.0/24`: TCP `6443`, `2379`, `2380`, `10250`; UDP `8472` | Third prod server node |
 
-This profile uses 7 project vCPUs. It fits inside an 8 vCPU EC2 On-Demand Standard quota if no other matching instances are already running in the region.
+This profile uses 9 project vCPUs when every EC2 instance is running. Request at least a 9 vCPU EC2 On-Demand Standard quota in `ap-southeast-1`, or stop nonessential lab instances before creating the full prod cluster.
 
-Note: the Terraform module `k3s_prod_worker` is named as the second prod node, but the script `k3s/41-prod-server-2.sh` installs it as a k3s server node for the 2-node lab cluster. This is not quorum-safe HA; use 3 server nodes for real embedded-etcd HA.
+The prod cluster uses three k3s server nodes with embedded etcd quorum. It can tolerate one k3s server failure at the cluster level, but the prod subnet is still a single-AZ public subnet rather than a full multi-AZ production network.
 
 ## Script inventory
 
@@ -34,8 +35,9 @@ Note: the Terraform module `k3s_prod_worker` is named as the second prod node, b
 | `jenkins/10-controller.sh` | Jenkins controller | Installs Jenkins LTS and starts the controller service |
 | `jenkins/20-agent-tools.sh` | Jenkins agent, optionally controller | Installs Node.js, Trivy, Java, and Sonar Scanner for CI jobs |
 | `k3s/30-dev-single-node.sh` | k3s dev | Installs one standalone k3s server |
-| `k3s/40-prod-server-1.sh` | k3s prod master | Initializes the prod k3s embedded-etcd cluster |
-| `k3s/41-prod-server-2.sh` | k3s prod second server | Joins the second server to the prod k3s cluster |
+| `k3s/40-prod-server-1.sh` | k3s prod server 1 | Initializes the prod k3s embedded-etcd cluster |
+| `k3s/41-prod-server-2.sh` | k3s prod server 2 | Joins the second server to the prod k3s cluster |
+| `k3s/42-prod-server-3.sh` | k3s prod server 3 | Joins the third server to the prod k3s cluster |
 | `k3s/50-install-argocd.sh` | a configured k3s node | Installs Argo CD into the current cluster |
 
 ## Deploy infra
@@ -215,15 +217,15 @@ Before using the commands above, replace the repo URL in `gitops-manifest/argocd
 
 ## 4. k3s prod cluster
 
-Prod is a 2-server k3s cluster with embedded etcd. This is a lab topology, not a quorum-safe HA topology.
+Prod is a 3-server k3s cluster with embedded etcd quorum. This is the minimum k3s HA server topology and can tolerate one server failure.
 
-Generate one shared token on your local machine or on `k3s_prod_master`:
+Generate one shared token on your local machine or on `k3s_prod_server_1`:
 
 ```bash
 openssl rand -hex 32
 ```
 
-Use the same token on both prod nodes:
+Use the same token on all three prod nodes:
 
 ```bash
 export K3S_TOKEN="replace-with-the-generated-token"
@@ -231,7 +233,7 @@ export K3S_TOKEN="replace-with-the-generated-token"
 
 ### k3s prod 1
 
-EC2: `k3s_prod_master`, private IP `10.0.1.13`.
+EC2: `k3s_prod_server_1`, private IP `10.0.2.10`.
 
 Run:
 
@@ -250,7 +252,7 @@ sudo k3s kubectl get nodes -o wide
 
 ### k3s prod 2
 
-EC2: `k3s_prod_worker`, private IP `10.0.1.14`.
+EC2: `k3s_prod_server_2`, private IP `10.0.2.11`.
 
 Run:
 
@@ -261,7 +263,20 @@ export K3S_TOKEN="same-token-as-prod-1"
 bash k3s/41-prod-server-2.sh
 ```
 
-Final prod verify on `k3s_prod_master`:
+### k3s prod 3
+
+EC2: `k3s_prod_server_3`, private IP `10.0.2.12`.
+
+Run:
+
+```bash
+cd /tmp/iac-scripts
+bash common/00-base.sh
+export K3S_TOKEN="same-token-as-prod-1"
+bash k3s/42-prod-server-3.sh
+```
+
+Final prod verify on `k3s_prod_server_1`:
 
 ```bash
 sudo k3s kubectl get nodes -o wide
@@ -329,6 +344,7 @@ sudo k3s kubectl get nodes -o wide
 Network:
 
 ```bash
-curl -k https://10.0.1.13:6443/readyz
-curl -k https://10.0.1.14:6443/readyz
+curl -k https://10.0.2.10:6443/readyz
+curl -k https://10.0.2.11:6443/readyz
+curl -k https://10.0.2.12:6443/readyz
 ```

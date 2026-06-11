@@ -10,16 +10,45 @@ variable "cidr_block" {
   default     = "10.0.0.0/16"
 }
 
-variable "subnet_cidr" {
-  description = "The CIDR block for the public subnet"
+variable "dev_subnet_cidr" {
+  description = "The CIDR block for the dev public subnet"
   type        = string
   default     = "10.0.1.0/24"
 }
 
-variable "subnet_ip" {
-  description = "IP addresses for the subnets"
+variable "prod_subnet_cidr" {
+  description = "The CIDR block for the prod public subnet"
+  type        = string
+  default     = "10.0.2.0/24"
+}
+
+variable "dev_private_ips" {
+  description = "Private IP addresses for dev subnet resources: Jenkins server, Jenkins agent, k3s dev"
   type        = list(string)
-  default     = ["10.0.1.10", "10.0.1.11", "10.0.1.12", "10.0.1.13", "10.0.1.14"]
+  default     = ["10.0.1.10", "10.0.1.11", "10.0.1.12"]
+}
+
+variable "prod_private_ips" {
+  description = "Private IP addresses for prod k3s server resources"
+  type        = list(string)
+  default     = ["10.0.2.10", "10.0.2.11", "10.0.2.12"]
+
+  validation {
+    condition     = length(var.prod_private_ips) >= 3
+    error_message = "prod_private_ips must contain at least 3 IP addresses for the prod k3s server quorum."
+  }
+}
+
+variable "dev_public_ingress_cidr_blocks" {
+  description = "CIDR blocks allowed to reach dev public ingress ports"
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+
+variable "prod_public_ingress_cidr_blocks" {
+  description = "CIDR blocks allowed to reach prod public ingress ports. Replace with your admin public IP /32 before real use."
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
 }
 
 variable "aim_id" {
@@ -77,7 +106,7 @@ variable "ingress_ports_k3s_prod" {
 variable "private_ingress_ports_k3s_prod" {
   description = "List of private ingress ports for k3s HA server-to-server traffic"
   type        = list(number)
-  default     = [2379, 2380, 10250]
+  default     = [6443, 2379, 2380, 10250]
 }
 
 variable "private_ingress_udp_ports_k3s_prod" {

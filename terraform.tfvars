@@ -1,10 +1,14 @@
-aws_region                 = "ap-southeast-1"
-aim_id                     = "ami-0a56f8447277affd8"
-subnet_cidr                = "10.0.1.0/24"
-subnet_ip                  = ["10.0.1.10", "10.0.1.11", "10.0.1.12", "10.0.1.13", "10.0.1.14"]
-project_name               = "devops-project"
-cpu_credits                = "standard"
-enable_detailed_monitoring = false
+aws_region                      = "ap-southeast-1"
+aim_id                          = "ami-0a56f8447277affd8"
+dev_subnet_cidr                 = "10.0.1.0/24"
+prod_subnet_cidr                = "10.0.2.0/24"
+dev_private_ips                 = ["10.0.1.10", "10.0.1.11", "10.0.1.12"]
+prod_private_ips                = ["10.0.2.10", "10.0.2.11", "10.0.2.12"]
+dev_public_ingress_cidr_blocks  = ["0.0.0.0/0"]
+prod_public_ingress_cidr_blocks = ["0.0.0.0/0"]
+project_name                    = "devops-project"
+cpu_credits                     = "standard"
+enable_detailed_monitoring      = false
 
 ingress_ports_jenkins_server = [22, 8080]
 volume_size_jenkins_server   = 15

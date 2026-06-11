@@ -1,6 +1,6 @@
 # Infrastructure as Code - AWS DevOps Lab
 
-Terraform code for an AWS DevOps lab with Jenkins, a single-node k3s dev cluster, and a 2-node k3s prod cluster.
+Terraform code for an AWS DevOps lab with Jenkins, a single-node k3s dev cluster, and a 3-node k3s prod server cluster.
 
 State is stored in S3 and locked with DynamoDB. GitHub Actions is used for Terraform plan checks, manual apply/destroy, and EC2 power control.
 
@@ -11,7 +11,7 @@ Store this repository in Git and use GitHub Actions as the control plane:
 | Need | Workflow | What it does | What it does not do |
 |------|----------|--------------|---------------------|
 | Review Terraform changes | `Terraform Infra` on pull request or push | Runs init, format check, Checkov, plan, and EC2 lifecycle guard | Does not apply changes |
-| Create infrastructure | `Terraform Infra` manual `apply` | Creates the VPC, subnet, security groups, EIPs, and EC2 instances from Terraform | Does not configure Jenkins/k3s software by itself |
+| Create infrastructure | `Terraform Infra` manual `apply` | Creates the VPC, dev/prod subnets, security groups, EIPs, and EC2 instances from Terraform | Does not configure Jenkins/k3s software by itself |
 | Remove infrastructure | `Terraform Infra` manual `destroy` | Destroys Terraform-managed AWS resources | Does not preserve EC2 disks or instance state |
 | Stop cost temporarily | `EC2 Power State` manual `stop` | Calls AWS CLI `stop-instances` for the existing tagged EC2 instances | Does not run Terraform and does not recreate instances |
 | Start existing machines | `EC2 Power State` manual `start` | Calls AWS CLI `start-instances` for the existing tagged EC2 instances | Does not run Terraform and does not create new instances |
@@ -26,62 +26,78 @@ Use Terraform `apply` only when you want Terraform to create or intentionally ch
 |                                                                                |
 | +----------------------------- VPC: 10.0.0.0/16 -----------------------------+ |
 | |                                                                            | |
-| | +---------------------- Public Subnet: 10.0.1.0/24 ----------------------+ | |
+| | +------------- Dev Public Subnet: 10.0.1.0/24 (ap-southeast-1a) --------+ | |
 | | |                                                                        | | |
 | | |  +----------------------+        +----------------------+              | | |
-| | |  | Jenkins Server       |        | Jenkins Agent        |              | | |
-| | |  | 10.0.1.10            |        | 10.0.1.11            |              | | |
-| | |  | t2.small             |        | t2.micro             |              | | |
-| | |  | 22, 8080             |        | 22                   |              | | |
+| | |  | jenkins_server       |        | jenkins_agent        |              | | |
+| | |  | 10.0.1.10 + EIP      |        | 10.0.1.11 + EIP      |              | | |
+| | |  | t2.small / 15 GB     |        | t2.micro / 10 GB     |              | | |
+| | |  | Public TCP: 22,8080  |        | Public TCP: 22       |              | | |
 | | |  +----------------------+        +----------------------+              | | |
 | | |                                                                        | | |
 | | |  +----------------------+                                              | | |
-| | |  | k3s Dev              |                                              | | |
-| | |  | 10.0.1.12            |                                              | | |
-| | |  | t2.small             |                                              | | |
-| | |  | 22, 6443, 30080,     |                                              | | |
-| | |  | 30443                |                                              | | |
+| | |  | k3s_dev              |                                              | | |
+| | |  | 10.0.1.12 + EIP      |                                              | | |
+| | |  | t2.small / 15 GB     |                                              | | |
+| | |  | Public TCP: 22,6443, |                                              | | |
+| | |  | 30080,30443          |                                              | | |
 | | |  +----------------------+                                              | | |
-| | |                                                                        | | |
-| | |  +----------------------+        +----------------------+              | | |
-| | |  | k3s Prod Master      |        | k3s Prod Worker      |              | | |
-| | |  | 10.0.1.13            |        | 10.0.1.14            |              | | |
-| | |  | t3a.medium           |        | t3a.medium           |              | | |
-| | |  | Public: 22, 6443,    |        | Public: 22, 6443,    |              | | |
-| | |  | 30080, 30443         |        | 30080, 30443         |              | | |
-| | |  | Private: TCP 2379,   |        | Private: TCP 2379,   |              | | |
-| | |  | 2380, 10250; UDP     |        | 2380, 10250; UDP     |              | | |
-| | |  | 8472                 |        | 8472                 |              | | |
-| | |  +----------------------+        +----------------------+              | | |
 | | |                                                                        | | |
 | | +------------------------------------------------------------------------+ | |
 | |                                                                            | |
-| | Route Table: 0.0.0.0/0 -> Internet Gateway                                 | |
+| | +------------ Prod Public Subnet: 10.0.2.0/24 (ap-southeast-1b) --------+ | |
+| | |                                                                        | | |
+| | |  +----------------------+        +----------------------+              | | |
+| | |  | k3s_prod_server_1    |        | k3s_prod_server_2    |              | | |
+| | |  | 10.0.2.10 + EIP      |        | 10.0.2.11 + EIP      |              | | |
+| | |  | t3a.medium / 20 GB   |        | t3a.medium / 20 GB   |              | | |
+| | |  | Public TCP: 22,6443, |        | Public TCP: 22,6443, |              | | |
+| | |  | 30080,30443          |        | 30080,30443          |              | | |
+| | |  | Private from prod:   |        | Private from prod:   |              | | |
+| | |  | TCP 6443,2379,2380,  |        | TCP 6443,2379,2380,  |              | | |
+| | |  | 10250; UDP 8472      |        | 10250; UDP 8472      |              | | |
+| | |  +----------------------+        +----------------------+              | | |
+| | |                                                                        | | |
+| | |  +----------------------+                                              | | |
+| | |  | k3s_prod_server_3    |                                              | | |
+| | |  | 10.0.2.12 + EIP      |                                              | | |
+| | |  | t3a.medium / 20 GB   |                                              | | |
+| | |  | Public TCP: 22,6443, |                                              | | |
+| | |  | 30080,30443          |                                              | | |
+| | |  | Private from prod:   |                                              | | |
+| | |  | TCP 6443,2379,2380,  |                                              | | |
+| | |  | 10250; UDP 8472      |                                              | | |
+| | |  +----------------------+                                              | | |
+| | |                                                                        | | |
+| | +------------------------------------------------------------------------+ | |
+| |                                                                            | |
+| | Shared route table: 0.0.0.0/0 -> Internet Gateway                          | |
 | +----------------------------------------------------------------------------+ |
 |                                                                                |
 | Internet Gateway -> Internet                                                   |
 +--------------------------------------------------------------------------------+
 ```
 
-| Module | Instance type | vCPU | Private IP | Public ingress | Private ingress |
-|--------|---------------|------|------------|----------------|-----------------|
-| `jenkins_server` | `t2.small` | 1 | `10.0.1.10` | `22`, `8080` | - |
-| `jenkins_agent` | `t2.micro` | 1 | `10.0.1.11` | `22` | - |
-| `k3s_dev` | `t2.small` | 1 | `10.0.1.12` | `22`, `6443`, `30080`, `30443` | - |
-| `k3s_prod_master` | `t3a.medium` | 2 | `10.0.1.13` | `22`, `6443`, `30080`, `30443` | TCP `2379`, `2380`, `10250`; UDP `8472` |
-| `k3s_prod_worker` | `t3a.medium` | 2 | `10.0.1.14` | `22`, `6443`, `30080`, `30443` | TCP `2379`, `2380`, `10250`; UDP `8472` |
+| Module | Subnet / AZ | Instance type | vCPU | Root disk | Private IP | Public IP | Public ingress | Private ingress |
+|--------|-------------|---------------|------|-----------|------------|-----------|----------------|-----------------|
+| `jenkins_server` | Dev `10.0.1.0/24` / `ap-southeast-1a` | `t2.small` | 1 | 15 GB | `10.0.1.10` | EIP | TCP `22`, `8080` | - |
+| `jenkins_agent` | Dev `10.0.1.0/24` / `ap-southeast-1a` | `t2.micro` | 1 | 10 GB | `10.0.1.11` | EIP | TCP `22` | - |
+| `k3s_dev` | Dev `10.0.1.0/24` / `ap-southeast-1a` | `t2.small` | 1 | 15 GB | `10.0.1.12` | EIP | TCP `22`, `6443`, `30080`, `30443` | - |
+| `k3s_prod_server_1` | Prod `10.0.2.0/24` / `ap-southeast-1b` | `t3a.medium` | 2 | 20 GB | `10.0.2.10` | EIP | TCP `22`, `6443`, `30080`, `30443` | From `10.0.2.0/24`: TCP `6443`, `2379`, `2380`, `10250`; UDP `8472` |
+| `k3s_prod_server_2` | Prod `10.0.2.0/24` / `ap-southeast-1b` | `t3a.medium` | 2 | 20 GB | `10.0.2.11` | EIP | TCP `22`, `6443`, `30080`, `30443` | From `10.0.2.0/24`: TCP `6443`, `2379`, `2380`, `10250`; UDP `8472` |
+| `k3s_prod_server_3` | Prod `10.0.2.0/24` / `ap-southeast-1b` | `t3a.medium` | 2 | 20 GB | `10.0.2.12` | EIP | TCP `22`, `6443`, `30080`, `30443` | From `10.0.2.0/24`: TCP `6443`, `2379`, `2380`, `10250`; UDP `8472` |
 
-The topology uses 7 project vCPUs. It fits inside an 8 vCPU EC2 On-Demand Standard quota if no other matching instances are already running in the region.
+The topology uses 9 project vCPUs when every EC2 instance is running. Request at least a 9 vCPU EC2 On-Demand Standard quota in `ap-southeast-1`, or stop nonessential lab instances before creating the full prod cluster.
 
-Terraform provisions the AWS layer only: VPC, subnet, route table, security groups, Elastic IPs, and EC2 instances. Jenkins, Docker, k3s, and Argo CD are configured afterward with the scripts in `scripts/`.
+Terraform provisions the AWS layer only: VPC, dev/prod subnets, shared public route table, security groups, Elastic IPs, and EC2 instances. The subnets are public because they route to the Internet Gateway; EC2 public addresses come from explicit Elastic IPs, not subnet auto-assign public IP. Jenkins, Docker, k3s, and Argo CD are configured afterward with the scripts in `scripts/`.
 
-The Terraform module named `k3s_prod_worker` is the second prod k3s node. The current bootstrap script installs it as a second k3s server node for the 2-node lab cluster, not as a worker-only Kubernetes agent. This keeps the lab simple but is not quorum-safe HA; a real HA embedded-etcd cluster should use 3 server nodes.
+Prod k3s uses three server nodes with embedded etcd quorum. This can tolerate one k3s server failure at the cluster level. The prod subnet is still a single-AZ public subnet, so this is node-level HA rather than full multi-AZ HA.
 
 Cost profile:
 
 - Region is Singapore: `ap-southeast-1`.
-- Prod k3s nodes use `t3a.medium` to keep 4 GiB RAM per node at lower cost than `t2.medium`.
-- Jenkins and dev nodes stay on `t2` sizes so the full lab remains at 7 vCPUs.
+- Prod k3s nodes use three `t3a.medium` instances to keep 4 GiB RAM per server node at lower cost than `t2.medium`.
+- Jenkins and dev nodes stay on `t2` sizes so only the prod side grows for HA.
 - CPU credits use `standard` mode to avoid unlimited burst charges.
 - EC2 detailed monitoring is disabled by default for the lab budget.
 
@@ -196,8 +212,9 @@ Target EC2 names:
 <project_name>-jenkins_server
 <project_name>-jenkins_agent
 <project_name>-k3s_dev
-<project_name>-k3s_prod_master
-<project_name>-k3s_prod_worker
+<project_name>-k3s_prod_server_1
+<project_name>-k3s_prod_server_2
+<project_name>-k3s_prod_server_3
 ```
 
 Inputs:

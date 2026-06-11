@@ -5,9 +5,9 @@ set -euo pipefail
 # Use the same K3S_TOKEN value that was used on k3s-prod-1.
 : "${K3S_TOKEN:?Set K3S_TOKEN to the same token used on k3s-prod-1.}"
 
-PRIVATE_IP="${PRIVATE_IP:-10.0.1.14}"
+PRIVATE_IP="${PRIVATE_IP:-10.0.2.11}"
 NODE_NAME="${NODE_NAME:-k3s-prod-2}"
-SERVER_URL="${SERVER_URL:-https://10.0.1.13:6443}"
+SERVER_URL="${SERVER_URL:-https://10.0.2.10:6443}"
 INSTALL_K3S_CHANNEL="${INSTALL_K3S_CHANNEL:-stable}"
 
 # Read EC2 metadata through IMDSv2 so the public EIP can be added as a TLS SAN.
@@ -22,7 +22,7 @@ metadata() {
 }
 
 PUBLIC_IP="${PUBLIC_IP:-$(metadata public-ipv4)}"
-TLS_SAN_FLAGS="--tls-san 10.0.1.13 --tls-san 10.0.1.14"
+TLS_SAN_FLAGS="--tls-san 10.0.2.10 --tls-san 10.0.2.11 --tls-san 10.0.2.12"
 
 # Include the public IP in the API server certificate for local kubectl access.
 if [ -n "$PUBLIC_IP" ]; then
