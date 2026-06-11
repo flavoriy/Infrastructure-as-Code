@@ -60,6 +60,7 @@ resource "aws_eip" "eip" {
 
 
 #checkov:skip=CKV2_AWS_41:IAM role not required for this DevOps lab environment
+#checkov:skip=CKV_AWS_126:Detailed monitoring is disabled by default to keep this lab within a fixed AWS credit budget
 resource "aws_instance" "ec2" {
   ami                         = var.aws_ami_id
   instance_type               = var.aws_instance_type
@@ -68,12 +69,19 @@ resource "aws_instance" "ec2" {
   subnet_id                   = var.subnet_id
   private_ip                  = var.private_ip
   associate_public_ip_address = false
-  monitoring                  = true
+  monitoring                  = var.enable_detailed_monitoring
 
   metadata_options {
     http_endpoint               = "enabled"
     http_tokens                 = "required"
     http_put_response_hop_limit = 1
+  }
+
+  dynamic "credit_specification" {
+    for_each = length(regexall("^t[0-9]", var.aws_instance_type)) > 0 ? [var.cpu_credits] : []
+    content {
+      cpu_credits = credit_specification.value
+    }
   }
 
   root_block_device {

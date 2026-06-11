@@ -98,6 +98,23 @@ variable "key_name" {
   default     = "jenkins-share-lib"
 }
 
+variable "cpu_credits" {
+  description = "CPU credit option for burstable EC2 instances. Use standard to avoid extra unlimited burst charges."
+  type        = string
+  default     = "standard"
+
+  validation {
+    condition     = contains(["standard", "unlimited"], var.cpu_credits)
+    error_message = "cpu_credits must be either standard or unlimited."
+  }
+}
+
+variable "enable_detailed_monitoring" {
+  description = "Enable paid EC2 detailed monitoring. Keep false for cost-optimized lab usage."
+  type        = bool
+  default     = false
+}
+
 variable "instance_type_jenkins_server" {
   description = "The EC2 instance type for the Jenkins server"
   type        = string
@@ -119,5 +136,5 @@ variable "instance_type_k3s_dev" {
 variable "instance_type_k3s_prod" {
   description = "The EC2 instance type for each prod k3s server"
   type        = string
-  default     = "t2.small"
+  default     = "t3a.medium"
 }

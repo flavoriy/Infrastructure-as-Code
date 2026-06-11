@@ -24,46 +24,52 @@ module "vpc" {
 
 
 module "jenkins_server" {
-  instance_name     = "jenkins_server"
-  source            = "./module/ec2"
-  vpc_id            = module.vpc.vpc_id
-  project_name      = var.project_name
-  aws_ami_id        = var.aim_id
-  aws_instance_type = var.instance_type_jenkins_server
-  key_name          = var.key_name
-  subnet_id         = module.vpc.subnet_id
-  private_ip        = var.subnet_ip[0]
-  ingress_ports     = var.ingress_ports_jenkins_server
-  volume_size       = var.volume_size_jenkins_server
+  instance_name              = "jenkins_server"
+  source                     = "./module/ec2"
+  vpc_id                     = module.vpc.vpc_id
+  project_name               = var.project_name
+  aws_ami_id                 = var.aim_id
+  aws_instance_type          = var.instance_type_jenkins_server
+  cpu_credits                = var.cpu_credits
+  enable_detailed_monitoring = var.enable_detailed_monitoring
+  key_name                   = var.key_name
+  subnet_id                  = module.vpc.subnet_id
+  private_ip                 = var.subnet_ip[0]
+  ingress_ports              = var.ingress_ports_jenkins_server
+  volume_size                = var.volume_size_jenkins_server
 }
 
 
 module "jenkins_agent" {
-  instance_name     = "jenkins_agent"
-  source            = "./module/ec2"
-  vpc_id            = module.vpc.vpc_id
-  project_name      = var.project_name
-  aws_ami_id        = var.aim_id
-  aws_instance_type = var.instance_type_jenkins_agent
-  key_name          = var.key_name
-  subnet_id         = module.vpc.subnet_id
-  private_ip        = var.subnet_ip[1]
-  ingress_ports     = var.ingress_ports_jenkins_agent
-  volume_size       = var.volume_size_jenkins_agent
+  instance_name              = "jenkins_agent"
+  source                     = "./module/ec2"
+  vpc_id                     = module.vpc.vpc_id
+  project_name               = var.project_name
+  aws_ami_id                 = var.aim_id
+  aws_instance_type          = var.instance_type_jenkins_agent
+  cpu_credits                = var.cpu_credits
+  enable_detailed_monitoring = var.enable_detailed_monitoring
+  key_name                   = var.key_name
+  subnet_id                  = module.vpc.subnet_id
+  private_ip                 = var.subnet_ip[1]
+  ingress_ports              = var.ingress_ports_jenkins_agent
+  volume_size                = var.volume_size_jenkins_agent
 }
 
 module "k3s_dev" {
-  instance_name     = "k3s_dev"
-  source            = "./module/ec2"
-  vpc_id            = module.vpc.vpc_id
-  project_name      = var.project_name
-  aws_ami_id        = var.aim_id
-  aws_instance_type = var.instance_type_k3s_dev
-  key_name          = var.key_name
-  subnet_id         = module.vpc.subnet_id
-  private_ip        = var.subnet_ip[2]
-  ingress_ports     = var.ingress_ports_k3s_dev
-  volume_size       = var.volume_size_k3s_dev
+  instance_name              = "k3s_dev"
+  source                     = "./module/ec2"
+  vpc_id                     = module.vpc.vpc_id
+  project_name               = var.project_name
+  aws_ami_id                 = var.aim_id
+  aws_instance_type          = var.instance_type_k3s_dev
+  cpu_credits                = var.cpu_credits
+  enable_detailed_monitoring = var.enable_detailed_monitoring
+  key_name                   = var.key_name
+  subnet_id                  = module.vpc.subnet_id
+  private_ip                 = var.subnet_ip[2]
+  ingress_ports              = var.ingress_ports_k3s_dev
+  volume_size                = var.volume_size_k3s_dev
 }
 
 
@@ -75,6 +81,8 @@ module "k3s_prod_master" {
   project_name                = var.project_name
   aws_ami_id                  = var.aim_id
   aws_instance_type           = var.instance_type_k3s_prod
+  cpu_credits                 = var.cpu_credits
+  enable_detailed_monitoring  = var.enable_detailed_monitoring
   key_name                    = var.key_name
   subnet_id                   = module.vpc.subnet_id
   private_ip                  = var.subnet_ip[3]
@@ -92,6 +100,8 @@ module "k3s_prod_worker" {
   project_name                = var.project_name
   aws_ami_id                  = var.aim_id
   aws_instance_type           = var.instance_type_k3s_prod
+  cpu_credits                 = var.cpu_credits
+  enable_detailed_monitoring  = var.enable_detailed_monitoring
   key_name                    = var.key_name
   subnet_id                   = module.vpc.subnet_id
   private_ip                  = var.subnet_ip[4]

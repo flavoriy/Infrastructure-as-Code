@@ -1,6 +1,8 @@
 name: 'Terraform Infra'
 run-name: Terraform Infra - ${{ github.event_name == 'workflow_dispatch' && inputs.action || 'plan' }}
 
+# Creates or destroys Terraform-managed infrastructure.
+# Do not use this workflow for EC2 start/stop; use ec2-power-state.yml instead.
 on:
   push:
     branches: [ "main" ]
@@ -26,11 +28,6 @@ on:
         options:
           - apply
           - destroy
-      allow_ec2_lifecycle_changes:
-        description: 'Allow EC2 create/update/delete/replace after initial provision'
-        required: true
-        default: false
-        type: boolean
 
 permissions:
   contents: read
@@ -89,11 +86,12 @@ jobs:
 
     - name: Guard EC2 lifecycle changes
       if: github.event_name != 'workflow_dispatch' || github.event.inputs.action != 'destroy'
-      env:
-        ALLOW_EC2_LIFECYCLE_CHANGES: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.allow_ec2_lifecycle_changes || 'false' }}
       run: |
         set -euo pipefail
 
+        # The guard allows first-time EC2 creation, then blocks later EC2
+        # create/update/delete/replace actions so Terraform is not used as
+        # an EC2 power-state workflow.
         terraform show -json tfplan > tfplan.json
 
         existing_instance_count=$(jq -r '
@@ -128,11 +126,6 @@ jobs:
 
         if [ "$instance_change_count" -eq 0 ]; then
           echo "No EC2 lifecycle changes detected."
-          exit 0
-        fi
-
-        if [ "$ALLOW_EC2_LIFECYCLE_CHANGES" = "true" ]; then
-          echo "EC2 lifecycle changes allowed by manual input."
           exit 0
         fi
 
@@ -182,7 +175,7 @@ jobs:
         ' tfplan.json >&2
 
         echo "Canceling. Use the EC2 Power State workflow for start/stop." >&2
-        echo "For an intentional EC2 lifecycle change, rerun the manual workflow with allow_ec2_lifecycle_changes=true." >&2
+        echo "EC2 create/update/delete/replace is blocked after initial provision." >&2
         exit 1
 
     - name: Terraform Apply (manual trigger)

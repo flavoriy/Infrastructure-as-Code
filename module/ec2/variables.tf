@@ -24,6 +24,23 @@ variable "aws_instance_type" {
   default     = "t2.small"
 }
 
+variable "cpu_credits" {
+  description = "CPU credit option for burstable EC2 instances. Use standard to avoid extra unlimited burst charges."
+  type        = string
+  default     = "standard"
+
+  validation {
+    condition     = contains(["standard", "unlimited"], var.cpu_credits)
+    error_message = "cpu_credits must be either standard or unlimited."
+  }
+}
+
+variable "enable_detailed_monitoring" {
+  description = "Enable paid EC2 detailed monitoring. Keep false for cost-optimized lab usage."
+  type        = bool
+  default     = false
+}
+
 variable "key_name" {
   description = "The name of the SSH key pair"
   type        = string

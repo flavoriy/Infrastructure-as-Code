@@ -2,6 +2,15 @@
 
 Runbook nay dung de cau hinh nhanh cac EC2 sau khi `terraform apply`.
 
+Terraform chi tao ha tang AWS. Cac script trong thu muc nay cai dat phan mem ben trong EC2: base OS packages, Docker, Jenkins, k3s, va Argo CD.
+
+Dung workflow nhu sau:
+
+1. `Terraform Infra` manual `apply`: tao VPC/subnet/security group/EIP/EC2.
+2. Chay cac script cau hinh trong runbook nay tren tung EC2 phu hop.
+3. `EC2 Power State` manual `stop`/`start`: bat tat EC2 da ton tai, khong tao lai instance.
+4. `Terraform Infra` manual `destroy`: huy toan bo ha tang khi khong can lab nua.
+
 ## Target topology
 
 | EC2 | Terraform module | Private IP | Default type | Root disk | Public ports | Private ports | Role |
@@ -9,10 +18,25 @@ Runbook nay dung de cau hinh nhanh cac EC2 sau khi `terraform apply`.
 | Jenkins controller | `jenkins_server` | `10.0.1.10` | `t2.small` | 15 GB | `22`, `8080` | none | Jenkins UI/controller |
 | Jenkins agent | `jenkins_agent` | `10.0.1.11` | `t2.micro` | 10 GB | `22` | none | Build Docker images and run CI tools |
 | k3s dev | `k3s_dev` | `10.0.1.12` | `t2.small` | 15 GB | `22`, `6443`, `30080`, `30443` | none | Single-node dev cluster |
-| k3s prod 1 | `k3s_prod_1` | `10.0.1.13` | `t2.small` | 15 GB | `22`, `6443`, `30080`, `30443` | TCP `2379`, `2380`, `10250`; UDP `8472` | First prod server node |
-| k3s prod 2 | `k3s_prod_2` | `10.0.1.14` | `t2.small` | 15 GB | `22`, `6443`, `30080`, `30443` | TCP `2379`, `2380`, `10250`; UDP `8472` | Prod server node |
+| k3s prod master | `k3s_prod_master` | `10.0.1.13` | `t3a.medium` | 20 GB | `22`, `6443`, `30080`, `30443` | TCP `2379`, `2380`, `10250`; UDP `8472` | First prod server node |
+| k3s prod second server | `k3s_prod_worker` | `10.0.1.14` | `t3a.medium` | 20 GB | `22`, `6443`, `30080`, `30443` | TCP `2379`, `2380`, `10250`; UDP `8472` | Second prod server node |
 
-This profile uses about 5 project vCPUs. If another project already runs one `m7i-flex.large`, your account should have at least 8 Standard On-Demand vCPUs available.
+This profile uses 7 project vCPUs. It fits inside an 8 vCPU EC2 On-Demand Standard quota if no other matching instances are already running in the region.
+
+Note: the Terraform module `k3s_prod_worker` is named as the second prod node, but the script `k3s/41-prod-server-2.sh` installs it as a k3s server node for the 2-node lab cluster. This is not quorum-safe HA; use 3 server nodes for real embedded-etcd HA.
+
+## Script inventory
+
+| Script | Run on | Purpose |
+|---|---|---|
+| `common/00-base.sh` | all EC2 nodes | Installs common OS tools, disables swap, and enables kernel settings needed by k3s |
+| `common/10-docker.sh` | Jenkins agent, optionally Jenkins controller | Installs Docker Engine and adds build users to the `docker` group |
+| `jenkins/10-controller.sh` | Jenkins controller | Installs Jenkins LTS and starts the controller service |
+| `jenkins/20-agent-tools.sh` | Jenkins agent, optionally controller | Installs Node.js, Trivy, Java, and Sonar Scanner for CI jobs |
+| `k3s/30-dev-single-node.sh` | k3s dev | Installs one standalone k3s server |
+| `k3s/40-prod-server-1.sh` | k3s prod master | Initializes the prod k3s embedded-etcd cluster |
+| `k3s/41-prod-server-2.sh` | k3s prod second server | Joins the second server to the prod k3s cluster |
+| `k3s/50-install-argocd.sh` | a configured k3s node | Installs Argo CD into the current cluster |
 
 ## Deploy infra
 
@@ -28,12 +52,7 @@ terraform apply tfplan
 terraform output
 ```
 
-If you want to save quota/cost temporarily:
-
-```hcl
-enable_jenkins_agent = false
-enable_k3s_prod      = false
-```
+To save cost temporarily after provisioning, use the `EC2 Power State` workflow with action `stop`. That workflow only stops instances and does not modify Terraform state.
 
 ## Copy scripts to EC2
 
@@ -198,7 +217,7 @@ Before using the commands above, replace the repo URL in `gitops-manifest/argocd
 
 Prod is a 2-server k3s cluster with embedded etcd. This is a lab topology, not a quorum-safe HA topology.
 
-Generate one shared token on your local machine or on `k3s_prod_1`:
+Generate one shared token on your local machine or on `k3s_prod_master`:
 
 ```bash
 openssl rand -hex 32
@@ -212,7 +231,7 @@ export K3S_TOKEN="replace-with-the-generated-token"
 
 ### k3s prod 1
 
-EC2: `k3s_prod_1`, private IP `10.0.1.13`.
+EC2: `k3s_prod_master`, private IP `10.0.1.13`.
 
 Run:
 
@@ -231,7 +250,7 @@ sudo k3s kubectl get nodes -o wide
 
 ### k3s prod 2
 
-EC2: `k3s_prod_2`, private IP `10.0.1.14`.
+EC2: `k3s_prod_worker`, private IP `10.0.1.14`.
 
 Run:
 
@@ -242,7 +261,7 @@ export K3S_TOKEN="same-token-as-prod-1"
 bash k3s/41-prod-server-2.sh
 ```
 
-Final prod verify on `k3s_prod_1`:
+Final prod verify on `k3s_prod_master`:
 
 ```bash
 sudo k3s kubectl get nodes -o wide

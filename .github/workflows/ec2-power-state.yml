@@ -1,5 +1,7 @@
 name: 'EC2 Power State'
 
+# Starts or stops existing EC2 instances by Name tag only.
+# This workflow never runs Terraform and never creates/replaces instances.
 on:
   workflow_dispatch:
     inputs:
@@ -42,6 +44,7 @@ jobs:
         run: |
           set -euo pipefail
 
+          # Keep this list aligned with Terraform EC2 Name tags.
           names=(
             "$PROJECT_NAME-jenkins_server"
             "$PROJECT_NAME-jenkins_agent"
@@ -52,9 +55,11 @@ jobs:
 
           case "$ACTION" in
             start)
+              # Only stopped instances need a start call.
               state_filter="stopped"
               ;;
             stop)
+              # Only running instances need a stop call.
               state_filter="running"
               ;;
             *)
