@@ -186,7 +186,7 @@ Manual destroy:
 
 Workflow file: `.github/workflows/ec2-power-state.yml`
 
-This workflow starts or stops existing EC2 instances by their `Name` tags. It uses AWS CLI only and does not run Terraform.
+This workflow starts or stops existing EC2 instances by their `Name` tags. It checks out the repository, reads `project_name` from `terraform.tfvars`, then uses AWS CLI only. It does not run Terraform.
 
 It does not create, update, replace, or destroy instances. It only changes the EC2 power state for instances that already exist and match the expected `Name` tags.
 
@@ -205,7 +205,8 @@ Inputs:
 | Input | Example value | Description |
 |-------|---------------|-------------|
 | `action` | `stop` | `start` or `stop` |
-| `project_name` | `jenkins-share-lib-project` | Prefix used in the EC2 `Name` tag |
+
+The EC2 `Name` tag prefix is not entered manually. It is read from `project_name` in `terraform.tfvars`.
 
 Behavior:
 

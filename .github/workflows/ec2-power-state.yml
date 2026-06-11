@@ -13,11 +13,6 @@ on:
         options:
           - start
           - stop
-      project_name:
-        description: 'Terraform project_name tag prefix'
-        required: true
-        default: 'jenkins-share-lib-project'
-        type: string
 
 permissions:
   contents: read
@@ -29,6 +24,9 @@ jobs:
     environment: production
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -40,9 +38,16 @@ jobs:
         id: resolve
         env:
           ACTION: ${{ github.event.inputs.action }}
-          PROJECT_NAME: ${{ github.event.inputs.project_name }}
         run: |
           set -euo pipefail
+
+          # Read the Terraform tag prefix from the same tfvars file used by apply/destroy.
+          PROJECT_NAME=$(sed -nE 's/^[[:space:]]*project_name[[:space:]]*=[[:space:]]*"([^"]+)".*$/\1/p' terraform.tfvars | head -n 1)
+
+          if [ -z "$PROJECT_NAME" ]; then
+            echo "project_name was not found in terraform.tfvars." >&2
+            exit 1
+          fi
 
           # Keep this list aligned with Terraform EC2 Name tags.
           names=(

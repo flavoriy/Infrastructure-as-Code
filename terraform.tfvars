@@ -2,7 +2,7 @@ aws_region                 = "ap-southeast-1"
 aim_id                     = "ami-0a56f8447277affd8"
 subnet_cidr                = "10.0.1.0/24"
 subnet_ip                  = ["10.0.1.10", "10.0.1.11", "10.0.1.12", "10.0.1.13", "10.0.1.14"]
-project_name               = "jenkins-share-lib-project"
+project_name               = "devops-project"
 cpu_credits                = "standard"
 enable_detailed_monitoring = false
 
