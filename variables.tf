@@ -16,39 +16,27 @@ variable "dev_subnet_cidr" {
   default     = "10.0.1.0/24"
 }
 
-variable "prod_subnet_cidr" {
-  description = "The CIDR block for the prod public subnet"
-  type        = string
-  default     = "10.0.2.0/24"
+variable "prod_subnet_cidrs" {
+  description = "The CIDR blocks for the prod public subnets (one per AZ)"
+  type        = list(string)
+  default     = ["10.0.2.0/24", "10.0.3.0/24", "10.0.4.0/24"]
 }
 
 variable "dev_private_ips" {
-  description = "Private IP addresses for dev subnet resources: Jenkins server, Jenkins agent, k3s dev"
+  description = "Private IP addresses for dev subnet resources: k3s dev"
   type        = list(string)
-  default     = ["10.0.1.10", "10.0.1.11", "10.0.1.12"]
+  default     = ["10.0.1.12"]
 }
 
 variable "prod_private_ips" {
   description = "Private IP addresses for prod k3s server resources"
   type        = list(string)
-  default     = ["10.0.2.10", "10.0.2.11", "10.0.2.12"]
+  default     = ["10.0.2.10", "10.0.3.10", "10.0.4.10"]
 
   validation {
     condition     = length(var.prod_private_ips) >= 3
     error_message = "prod_private_ips must contain at least 3 IP addresses for the prod k3s server quorum."
   }
-}
-
-variable "dev_public_ingress_cidr_blocks" {
-  description = "CIDR blocks allowed to reach dev public ingress ports"
-  type        = list(string)
-  default     = ["0.0.0.0/0"]
-}
-
-variable "prod_public_ingress_cidr_blocks" {
-  description = "CIDR blocks allowed to reach prod public ingress ports. Replace with your admin public IP /32 before real use."
-  type        = list(string)
-  default     = ["0.0.0.0/0"]
 }
 
 variable "aim_id" {
@@ -61,34 +49,18 @@ variable "project_name" {
   type        = string
 }
 
-variable "ingress_ports_jenkins_server" {
-  description = "List of ingress ports for the Jenkins server"
-  type        = list(number)
-  default     = [22, 8080]
-}
 
-variable "volume_size_jenkins_server" {
-  description = "The size of the root EBS volume for the Jenkins server (in GB)"
-  type        = number
-  default     = 20
-}
-
-variable "ingress_ports_jenkins_agent" {
-  description = "List of ingress ports for the Jenkins agent"
-  type        = list(number)
-  default     = [22]
-}
-
-variable "volume_size_jenkins_agent" {
-  description = "The size of the root EBS volume for the Jenkins agent (in GB)"
-  type        = number
-  default     = 10
-}
 
 variable "ingress_ports_k3s_dev" {
-  description = "List of public ingress ports for the dev single-node k3s server"
+  description = "List of public ingress ports for the dev single-node k3s server (e.g. NodePorts)"
   type        = list(number)
-  default     = [22, 6443, 30080, 30443]
+  default     = [30080, 30443]
+}
+
+variable "admin_ports_k3s_dev" {
+  description = "List of admin ports to restrict for the dev single-node k3s server (e.g. SSH, API)"
+  type        = list(number)
+  default     = [22, 6443]
 }
 
 variable "volume_size_k3s_dev" {
@@ -98,9 +70,15 @@ variable "volume_size_k3s_dev" {
 }
 
 variable "ingress_ports_k3s_prod" {
-  description = "List of public ingress ports for each prod k3s server"
+  description = "List of public ingress ports for each prod k3s server (e.g. NodePorts)"
   type        = list(number)
-  default     = [22, 6443, 30080, 30443]
+  default     = [30080, 30443]
+}
+
+variable "admin_ports_k3s_prod" {
+  description = "List of admin ports to restrict for each prod k3s server (e.g. SSH, API)"
+  type        = list(number)
+  default     = [22, 6443]
 }
 
 variable "private_ingress_ports_k3s_prod" {
@@ -124,37 +102,10 @@ variable "volume_size_k3s_prod" {
 variable "key_name" {
   description = "The name of the SSH key pair to use for the EC2 instance"
   type        = string
-  default     = "jenkins-share-lib"
+  default     = "devops-project"
 }
 
-variable "cpu_credits" {
-  description = "CPU credit option for burstable EC2 instances. Use standard to avoid extra unlimited burst charges."
-  type        = string
-  default     = "standard"
 
-  validation {
-    condition     = contains(["standard", "unlimited"], var.cpu_credits)
-    error_message = "cpu_credits must be either standard or unlimited."
-  }
-}
-
-variable "enable_detailed_monitoring" {
-  description = "Enable paid EC2 detailed monitoring. Keep false for cost-optimized lab usage."
-  type        = bool
-  default     = false
-}
-
-variable "instance_type_jenkins_server" {
-  description = "The EC2 instance type for the Jenkins server"
-  type        = string
-  default     = "t2.small"
-}
-
-variable "instance_type_jenkins_agent" {
-  description = "The EC2 instance type for the Jenkins agent"
-  type        = string
-  default     = "t2.micro"
-}
 
 variable "instance_type_k3s_dev" {
   description = "The EC2 instance type for the dev k3s server"

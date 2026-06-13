@@ -37,6 +37,17 @@ resource "aws_security_group" "sg" {
     }
   }
 
+  dynamic "ingress" {
+    for_each = var.admin_ingress_ports
+    content {
+      description = "Allow admin TCP port ${ingress.value}"
+      from_port   = ingress.value
+      to_port     = ingress.value
+      protocol    = "tcp"
+      cidr_blocks = var.admin_ingress_cidr_blocks
+    }
+  }
+
   egress {
     description = "Allow all outbound traffic"
     from_port   = 0
@@ -52,6 +63,7 @@ resource "aws_security_group" "sg" {
 
 
 resource "aws_eip" "eip" {
+  count  = var.associate_eip ? 1 : 0
   domain = "vpc"
   tags = {
     Name = "${var.project_name}-${var.instance_name}-eip"
@@ -68,7 +80,7 @@ resource "aws_instance" "ec2" {
   vpc_security_group_ids      = [aws_security_group.sg.id]
   subnet_id                   = var.subnet_id
   private_ip                  = var.private_ip
-  associate_public_ip_address = false
+  associate_public_ip_address = var.associate_eip ? false : true
   monitoring                  = var.enable_detailed_monitoring
 
   metadata_options {
@@ -97,6 +109,7 @@ resource "aws_instance" "ec2" {
 
 
 resource "aws_eip_association" "eip_assoc" {
+  count         = var.associate_eip ? 1 : 0
   instance_id   = aws_instance.ec2.id
-  allocation_id = aws_eip.eip.id
+  allocation_id = aws_eip.eip[0].id
 }

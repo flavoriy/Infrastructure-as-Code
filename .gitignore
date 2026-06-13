@@ -9,3 +9,7 @@ override.tf.json
 *_override.tf
 *_override.tf.
 .terraform.lock.hcl
+
+# Node-specific setup scripts
+scripts/nodes/
+

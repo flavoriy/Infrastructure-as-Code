@@ -5,7 +5,7 @@ set -euo pipefail
 # Use the same K3S_TOKEN value that was used on k3s-prod-1.
 : "${K3S_TOKEN:?Set K3S_TOKEN to the same token used on k3s-prod-1.}"
 
-PRIVATE_IP="${PRIVATE_IP:-10.0.2.11}"
+PRIVATE_IP="${PRIVATE_IP:-10.0.3.10}"
 NODE_NAME="${NODE_NAME:-k3s-prod-2}"
 SERVER_URL="${SERVER_URL:-https://10.0.2.10:6443}"
 INSTALL_K3S_CHANNEL="${INSTALL_K3S_CHANNEL:-stable}"
@@ -22,7 +22,7 @@ metadata() {
 }
 
 PUBLIC_IP="${PUBLIC_IP:-$(metadata public-ipv4)}"
-TLS_SAN_FLAGS="--tls-san 10.0.2.10 --tls-san 10.0.2.11 --tls-san 10.0.2.12"
+TLS_SAN_FLAGS="--tls-san 10.0.2.10 --tls-san 10.0.3.10 --tls-san 10.0.4.10"
 
 # Include the public IP in the API server certificate for local kubectl access.
 if [ -n "$PUBLIC_IP" ]; then
@@ -31,10 +31,11 @@ fi
 
 # --server points this node at the first prod server so it joins the cluster.
 curl -sfL https://get.k3s.io | \
-  K3S_TOKEN="$K3S_TOKEN" \
-  INSTALL_K3S_CHANNEL="$INSTALL_K3S_CHANNEL" \
-  INSTALL_K3S_EXEC="server --server ${SERVER_URL} --node-name ${NODE_NAME} --node-ip ${PRIVATE_IP} --advertise-address ${PRIVATE_IP} ${TLS_SAN_FLAGS} --write-kubeconfig-mode 644 --secrets-encryption" \
-  sh -
+  sudo env \
+    K3S_TOKEN="$K3S_TOKEN" \
+    INSTALL_K3S_CHANNEL="$INSTALL_K3S_CHANNEL" \
+    INSTALL_K3S_EXEC="server --server ${SERVER_URL} --node-name ${NODE_NAME} --node-ip ${PRIVATE_IP} --advertise-address ${PRIVATE_IP} ${TLS_SAN_FLAGS} --write-kubeconfig-mode 644 --secrets-encryption" \
+    sh -
 
 sudo systemctl enable --now k3s
 sudo k3s kubectl get nodes -o wide

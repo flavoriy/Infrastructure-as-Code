@@ -13,16 +13,6 @@ resource "aws_default_security_group" "default" {
   }
 }
 
-moved {
-  from = aws_subnet.subnet
-  to   = aws_subnet.dev
-}
-
-moved {
-  from = aws_route_table_association.rta
-  to   = aws_route_table_association.dev
-}
-
 resource "aws_subnet" "dev" {
   vpc_id                  = aws_vpc.vpc.id
   cidr_block              = var.dev_subnet_cidr
@@ -35,12 +25,13 @@ resource "aws_subnet" "dev" {
 }
 
 resource "aws_subnet" "prod" {
+  count                   = length(var.prod_subnet_cidrs)
   vpc_id                  = aws_vpc.vpc.id
-  cidr_block              = var.prod_subnet_cidr
-  availability_zone       = "${var.aws_region}b"
+  cidr_block              = var.prod_subnet_cidrs[count.index]
+  availability_zone       = "${var.aws_region}${element(["a", "b", "c"], count.index)}"
   map_public_ip_on_launch = false
   tags = {
-    Name        = "${var.project_name}-prod-public-subnet"
+    Name        = "${var.project_name}-prod-public-subnet-${count.index + 1}"
     Environment = "prod"
   }
 }
@@ -69,6 +60,7 @@ resource "aws_route_table_association" "dev" {
 }
 
 resource "aws_route_table_association" "prod" {
-  subnet_id      = aws_subnet.prod.id
+  count          = length(var.prod_subnet_cidrs)
+  subnet_id      = aws_subnet.prod[count.index].id
   route_table_id = aws_route_table.rt.id
 }

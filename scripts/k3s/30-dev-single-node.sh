@@ -28,9 +28,10 @@ fi
 
 # Install k3s server with encrypted secrets and a world-readable kubeconfig for lab use.
 curl -sfL https://get.k3s.io | \
-  INSTALL_K3S_CHANNEL="$INSTALL_K3S_CHANNEL" \
-  INSTALL_K3S_EXEC="server --node-name ${NODE_NAME} --node-ip ${PRIVATE_IP} --advertise-address ${PRIVATE_IP} ${TLS_SAN_FLAGS} --write-kubeconfig-mode 644 --secrets-encryption" \
-  sh -
+  sudo env \
+    INSTALL_K3S_CHANNEL="$INSTALL_K3S_CHANNEL" \
+    INSTALL_K3S_EXEC="server --node-name ${NODE_NAME} --node-ip ${PRIVATE_IP} --advertise-address ${PRIVATE_IP} ${TLS_SAN_FLAGS} --write-kubeconfig-mode 644 --secrets-encryption" \
+    sh -
 
 sudo systemctl enable --now k3s
 sudo k3s kubectl get nodes -o wide

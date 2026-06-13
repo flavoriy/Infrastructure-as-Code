@@ -90,3 +90,22 @@ variable "volume_size" {
   type        = number
   default     = 20
 }
+
+variable "associate_eip" {
+  description = "Whether to allocate and associate an Elastic IP with the instance"
+  type        = bool
+  default     = true
+}
+
+variable "admin_ingress_ports" {
+  description = "List of admin TCP ports to restrict to admin CIDR blocks (e.g. 22, 6443)"
+  type        = list(number)
+  default     = []
+}
+
+variable "admin_ingress_cidr_blocks" {
+  description = "CIDR blocks allowed to reach admin ingress ports"
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+

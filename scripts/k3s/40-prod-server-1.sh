@@ -21,7 +21,7 @@ metadata() {
 }
 
 PUBLIC_IP="${PUBLIC_IP:-$(metadata public-ipv4)}"
-TLS_SAN_FLAGS="--tls-san 10.0.2.10 --tls-san 10.0.2.11 --tls-san 10.0.2.12"
+TLS_SAN_FLAGS="--tls-san 10.0.2.10 --tls-san 10.0.3.10 --tls-san 10.0.4.10"
 
 # Include the public IP in the API server certificate for local kubectl access.
 if [ -n "$PUBLIC_IP" ]; then
@@ -30,10 +30,11 @@ fi
 
 # --cluster-init creates the embedded-etcd cluster on the first server.
 curl -sfL https://get.k3s.io | \
-  K3S_TOKEN="$K3S_TOKEN" \
-  INSTALL_K3S_CHANNEL="$INSTALL_K3S_CHANNEL" \
-  INSTALL_K3S_EXEC="server --cluster-init --node-name ${NODE_NAME} --node-ip ${PRIVATE_IP} --advertise-address ${PRIVATE_IP} ${TLS_SAN_FLAGS} --write-kubeconfig-mode 644 --secrets-encryption" \
-  sh -
+  sudo env \
+    K3S_TOKEN="$K3S_TOKEN" \
+    INSTALL_K3S_CHANNEL="$INSTALL_K3S_CHANNEL" \
+    INSTALL_K3S_EXEC="server --cluster-init --node-name ${NODE_NAME} --node-ip ${PRIVATE_IP} --advertise-address ${PRIVATE_IP} ${TLS_SAN_FLAGS} --write-kubeconfig-mode 644 --secrets-encryption" \
+    sh -
 
 sudo systemctl enable --now k3s
 sudo k3s kubectl get nodes -o wide

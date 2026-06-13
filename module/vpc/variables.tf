@@ -21,8 +21,8 @@ variable "dev_subnet_cidr" {
   default     = "10.0.1.0/24"
 }
 
-variable "prod_subnet_cidr" {
-  description = "CIDR block for the prod public subnet"
-  type        = string
-  default     = "10.0.2.0/24"
+variable "prod_subnet_cidrs" {
+  description = "The CIDR blocks for the prod public subnets (one per AZ)"
+  type        = list(string)
+  default     = ["10.0.2.0/24", "10.0.3.0/24", "10.0.4.0/24"]
 }

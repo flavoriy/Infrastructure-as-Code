@@ -3,11 +3,11 @@ output "instance_id" {
 }
 
 output "public_ip" {
-  value = aws_eip.eip.public_ip
+  value = var.associate_eip ? aws_eip.eip[0].public_ip : aws_instance.ec2.public_ip
 }
 
 output "eip_allocation_id" {
-  value = aws_eip.eip.id
+  value = var.associate_eip ? aws_eip.eip[0].id : null
 }
 
 output "security_group_id" {
