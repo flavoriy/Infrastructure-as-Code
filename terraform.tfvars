@@ -1,5 +1,5 @@
 aws_region        = "ap-southeast-1"
-ami_id            = "ami-0a56f8447277affd8"
+aim_id            = "ami-0a56f8447277affd8"
 dev_subnet_cidr   = "10.0.1.0/24"
 prod_subnet_cidrs = ["10.0.2.0/24", "10.0.3.0/24", "10.0.4.0/24"]
 dev_private_ips   = ["10.0.1.12"]

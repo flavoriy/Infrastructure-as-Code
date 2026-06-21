@@ -29,7 +29,7 @@ module "k3s_dev" {
   source              = "./module/ec2"
   vpc_id              = module.vpc.vpc_id
   project_name        = var.project_name
-  aws_ami_id          = var.ami_id
+  aws_ami_id          = var.aim_id
   aws_instance_type   = var.instance_type_k3s_dev
   key_name            = var.key_name
   subnet_id           = module.vpc.dev_subnet_id
@@ -45,7 +45,7 @@ module "k3s_prod_server_1" {
   source                      = "./module/ec2"
   vpc_id                      = module.vpc.vpc_id
   project_name                = var.project_name
-  aws_ami_id                  = var.ami_id
+  aws_ami_id                  = var.aim_id
   aws_instance_type           = var.instance_type_k3s_prod
   key_name                    = var.key_name
   subnet_id                   = module.vpc.prod_subnet_ids[0]
@@ -63,7 +63,7 @@ module "k3s_prod_server_2" {
   source                      = "./module/ec2"
   vpc_id                      = module.vpc.vpc_id
   project_name                = var.project_name
-  aws_ami_id                  = var.ami_id
+  aws_ami_id                  = var.aim_id
   aws_instance_type           = var.instance_type_k3s_prod
   key_name                    = var.key_name
   subnet_id                   = module.vpc.prod_subnet_ids[1]
@@ -81,7 +81,7 @@ module "k3s_prod_server_3" {
   source                      = "./module/ec2"
   vpc_id                      = module.vpc.vpc_id
   project_name                = var.project_name
-  aws_ami_id                  = var.ami_id
+  aws_ami_id                  = var.aim_id
   aws_instance_type           = var.instance_type_k3s_prod
   key_name                    = var.key_name
   subnet_id                   = module.vpc.prod_subnet_ids[2]

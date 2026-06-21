@@ -39,7 +39,7 @@ variable "prod_private_ips" {
   }
 }
 
-variable "ami_id" {
+variable "aim_id" {
   description = "The AMI ID for the EC2 instance"
   type        = string
 }
