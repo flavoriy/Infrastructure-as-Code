@@ -4,6 +4,12 @@ variable "aws_region" {
   default     = "ap-southeast-1"
 }
 
+variable "project_name" {
+  description = "The name of the project"
+  type        = string
+  default     = "tikto"
+}
+
 variable "cidr_block" {
   description = "The CIDR block for the VPC"
   type        = string
@@ -28,75 +34,9 @@ variable "dev_private_ips" {
   default     = ["10.0.1.12"]
 }
 
-variable "prod_private_ips" {
-  description = "Private IP addresses for prod k3s server resources"
-  type        = list(string)
-  default     = ["10.0.2.10", "10.0.3.10", "10.0.4.10"]
-
-  validation {
-    condition     = length(var.prod_private_ips) >= 3
-    error_message = "prod_private_ips must contain at least 3 IP addresses for the prod k3s server quorum."
-  }
-}
-
 variable "ami_id" {
   description = "The AMI ID for the EC2 instance"
   type        = string
-}
-
-variable "project_name" {
-  description = "The name of the project"
-  type        = string
-}
-
-
-
-variable "ingress_ports_k3s_dev" {
-  description = "List of public ingress ports for the dev single-node k3s server (e.g. NodePorts)"
-  type        = list(number)
-  default     = [30080, 30443]
-}
-
-variable "admin_ports_k3s_dev" {
-  description = "List of admin ports to restrict for the dev single-node k3s server (e.g. SSH, API)"
-  type        = list(number)
-  default     = [22, 6443]
-}
-
-variable "volume_size_k3s_dev" {
-  description = "The size of the root EBS volume for the dev k3s server (in GB)"
-  type        = number
-  default     = 15
-}
-
-variable "ingress_ports_k3s_prod" {
-  description = "List of public ingress ports for each prod k3s server (e.g. NodePorts)"
-  type        = list(number)
-  default     = [30080, 30443]
-}
-
-variable "admin_ports_k3s_prod" {
-  description = "List of admin ports to restrict for each prod k3s server (e.g. SSH, API)"
-  type        = list(number)
-  default     = [22, 6443]
-}
-
-variable "private_ingress_ports_k3s_prod" {
-  description = "List of private ingress ports for k3s HA server-to-server traffic"
-  type        = list(number)
-  default     = [6443, 2379, 2380, 10250]
-}
-
-variable "private_ingress_udp_ports_k3s_prod" {
-  description = "List of private UDP ingress ports for k3s pod networking"
-  type        = list(number)
-  default     = [8472]
-}
-
-variable "volume_size_k3s_prod" {
-  description = "The size of the root EBS volume for each prod k3s server (in GB)"
-  type        = number
-  default     = 15
 }
 
 variable "key_name" {
@@ -105,16 +45,58 @@ variable "key_name" {
   default     = "devops-project"
 }
 
-
-
+# Dev K3s EC2 Variables
 variable "instance_type_k3s_dev" {
   description = "The EC2 instance type for the dev k3s server"
   type        = string
-  default     = "t2.small"
+  default     = "t3.small"
 }
 
-variable "instance_type_k3s_prod" {
-  description = "The EC2 instance type for each prod k3s server"
+variable "ingress_ports_k3s_dev" {
+  description = "List of public ingress ports for the dev single-node k3s server"
+  type        = list(number)
+  default     = [30080, 30443]
+}
+
+variable "admin_ports_k3s_dev" {
+  description = "List of admin ports to restrict for the dev single-node k3s server"
+  type        = list(number)
+  default     = [22, 6443]
+}
+
+variable "volume_size_k3s_dev" {
+  description = "The size of the root EBS volume for the dev k3s server (in GB)"
+  type        = number
+  default     = 20
+}
+
+# Prod EKS Cluster Variables (HA & Spot Optimization)
+variable "eks_cluster_version" {
+  description = "Kubernetes version for Prod EKS cluster"
   type        = string
-  default     = "t3a.medium"
+  default     = "1.31"
+}
+
+variable "eks_node_instance_types" {
+  description = "Mixed EC2 instance types for Prod EKS Spot node group"
+  type        = list(string)
+  default     = ["t3.medium", "t3a.medium", "t2.medium"]
+}
+
+variable "eks_desired_size" {
+  description = "Desired number of worker nodes for Prod HA"
+  type        = number
+  default     = 3
+}
+
+variable "eks_min_size" {
+  description = "Minimum number of worker nodes for Prod HA"
+  type        = number
+  default     = 2
+}
+
+variable "eks_max_size" {
+  description = "Maximum number of worker nodes for Prod HA"
+  type        = number
+  default     = 5
 }

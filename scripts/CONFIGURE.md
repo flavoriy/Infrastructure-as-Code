@@ -1,15 +1,15 @@
-# EC2 configure runbook
+# EC2 Configuration Runbook
 
-Runbook này dùng để cấu hình nhanh các EC2 sau khi `terraform apply`.
+This runbook describes how to configure the EC2 instances after `terraform apply`.
 
-Terraform chỉ tạo hạ tầng AWS. Các script trong thư mục này cài đặt phần mềm bên trong EC2: base OS packages, k3s, và Argo CD.
+Terraform creates only the AWS infrastructure layer. The scripts in this directory install software inside the EC2 instances, including baseline OS packages, k3s, and Argo CD.
 
-Dùng workflow như sau:
+Use this workflow:
 
-1. `Terraform Infra` manual `apply`: tạo VPC, dev/prod subnets, security groups, EIP, EC2.
-2. Chạy các script cấu hình trong runbook này trên từng EC2 phù hợp.
-3. `EC2 Power State` manual `stop`/`start`: bật tắt EC2 đã tồn tại, không tạo lại instance.
-4. `Terraform Infra` manual `destroy`: hủy toàn bộ hạ tầng khi không cần lab nữa.
+1. Run the `Terraform Infra` workflow with manual `apply` to create the VPC, dev/prod subnets, security groups, Elastic IPs, and EC2 instances.
+2. Run the configuration scripts from this runbook on the matching EC2 instances.
+3. Use the `EC2 Power State` workflow with manual `stop` or `start` for existing instances. This does not recreate infrastructure.
+4. Use the `Terraform Infra` workflow with manual `destroy` when the lab should be fully removed.
 
 ## Target topology
 
@@ -57,7 +57,7 @@ Argo CD is intentionally left out of the wrappers. Install it only after the tar
 - Dev: run `bash k3s/50-install-argocd.sh` on `k3s_dev` after `nodes/k3s_dev/setup.bash`.
 - Prod: run `bash k3s/50-install-argocd.sh` on `k3s_prod_server_1` after all three prod servers are `Ready`.
 
-## Deploy infra
+## Provision infrastructure
 
 From local machine:
 
@@ -78,13 +78,13 @@ To save cost temporarily after provisioning, use the `EC2 Power State` workflow 
 Replace `PUBLIC_IP` with the output of Terraform.
 
 ```bash
-scp -r -i /path/to/jenkins-share-lib.pem scripts ubuntu@PUBLIC_IP:/tmp/iac-scripts
+scp -r -i /path/to/devops-project.pem scripts ubuntu@PUBLIC_IP:/tmp/iac-scripts
 ```
 
 Run scripts through SSH:
 
 ```bash
-ssh -i /path/to/jenkins-share-lib.pem ubuntu@PUBLIC_IP
+ssh -i /path/to/devops-project.pem ubuntu@PUBLIC_IP
 cd /tmp/iac-scripts
 ```
 
@@ -107,13 +107,13 @@ sudo k3s kubectl get nodes -o wide
 sudo k3s kubectl get pods -A
 ```
 
-Install ArgoCD in dev cluster:
+Install Argo CD in the dev cluster:
 
 ```bash
 bash k3s/50-install-argocd.sh
 ```
 
-Apply only the dev ArgoCD application in the dev cluster:
+Apply only the dev Argo CD application in the dev cluster:
 
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/Flavoriy/gitops-manifest/main/argocd/projects/tikto.yaml
@@ -190,13 +190,13 @@ sudo k3s kubectl get nodes -o wide
 sudo k3s kubectl get pods -A
 ```
 
-Install ArgoCD in prod cluster:
+Install Argo CD in the prod cluster:
 
 ```bash
 bash k3s/50-install-argocd.sh
 ```
 
-Apply only the prod ArgoCD application in the prod cluster:
+Apply only the prod Argo CD application in the prod cluster:
 
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/Flavoriy/gitops-manifest/main/argocd/projects/tikto.yaml
