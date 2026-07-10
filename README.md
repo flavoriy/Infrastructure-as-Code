@@ -15,7 +15,7 @@ Terraform is responsible for the cloud foundation, IAM policies, and managed ser
 
 ## Architecture Topology
 
-![AWS System Architecture Topology](file:///C:/Users/Mạnh%20Tân/.gemini/antigravity-cli/brain/14fbf8a6-1cd2-4143-831c-3ccffcebe589/aws_topology_flawless_drawio_1783419814525.jpg)
+![AWS System Architecture Topology](./aws_topology.jpg)
 
 ### Interactive Mermaid Flowchart
 
