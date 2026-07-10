@@ -2,7 +2,6 @@ name: 'Terraform Infra'
 run-name: Terraform Infra - ${{ github.event_name == 'workflow_dispatch' && inputs.action || 'plan' }}
 
 # Creates or destroys Terraform-managed infrastructure.
-# Do not use this workflow for EC2 start/stop; use ec2-power-state.yml instead.
 on:
   push:
     branches: [ "main" ]
@@ -84,99 +83,7 @@ jobs:
       if: github.event_name != 'workflow_dispatch' || github.event.inputs.action != 'destroy'
       run: terraform plan -input=false -out=tfplan
 
-    - name: Guard EC2 lifecycle changes
-      if: github.event_name != 'workflow_dispatch' || github.event.inputs.action != 'destroy'
-      run: |
-        set -euo pipefail
 
-        # The guard allows first-time EC2 creation, then blocks later EC2
-        # create/update/delete/replace actions so Terraform is not used as
-        # an EC2 power-state workflow.
-        terraform show -json tfplan > tfplan.json
-
-        existing_instance_count=$(jq -r '
-          def module_resources(m):
-            ((m.resources // []) + ((((m.child_modules // []) | map(module_resources(.))) | add) // []));
-
-          [
-            module_resources(.prior_state.values.root_module // {})[]
-            | select(.type == "aws_instance")
-          ]
-          | length
-        ' tfplan.json)
-
-        instance_change_count=$(jq -r '
-          [
-            .resource_changes[]?
-            | select(.type == "aws_instance")
-            | select(.change.actions != ["no-op"])
-          ]
-          | length
-        ' tfplan.json)
-
-        non_create_instance_change_count=$(jq -r '
-          [
-            .resource_changes[]?
-            | select(.type == "aws_instance")
-            | select(.change.actions != ["no-op"])
-            | select(.change.actions != ["create"])
-          ]
-          | length
-        ' tfplan.json)
-
-        if [ "$instance_change_count" -eq 0 ]; then
-          echo "No EC2 lifecycle changes detected."
-          exit 0
-        fi
-
-        if [ "$existing_instance_count" -eq 0 ] && [ "$non_create_instance_change_count" -eq 0 ]; then
-          echo "Initial EC2 creation allowed because Terraform state has no EC2 instances."
-          exit 0
-        fi
-
-        echo "Terraform plan includes EC2 lifecycle changes after EC2 instances already exist:" >&2
-
-        jq -r '
-          .resource_changes[]?
-          | select(.type == "aws_instance")
-          | select(.change.actions != ["no-op"])
-          | {
-              address: .address,
-              actions: (.change.actions | join(",")),
-              action_reason: (.action_reason // "-"),
-              name_before: (.change.before.tags.Name // "-"),
-              name_after: (.change.after.tags.Name // "-"),
-              instance_id: (.change.before.id // "-"),
-              private_ip_before: (.change.before.private_ip // "-"),
-              private_ip_after: (.change.after.private_ip // "-"),
-              instance_type_before: (.change.before.instance_type // "-"),
-              instance_type_after: (.change.after.instance_type // "-"),
-              ami_before: (.change.before.ami // "-"),
-              ami_after: (.change.after.ami // "-"),
-              replace_paths: (
-                (.change.replace_paths // [])
-                | map(map(tostring) | join("."))
-                | join(", ")
-              )
-            }
-          | [
-              "",
-              "Resource: \(.address)",
-              "Actions: \(.actions)",
-              "Name tag: \(.name_before) -> \(.name_after)",
-              "Instance ID: \(.instance_id)",
-              "Private IP: \(.private_ip_before) -> \(.private_ip_after)",
-              "Instance type: \(.instance_type_before) -> \(.instance_type_after)",
-              "AMI: \(.ami_before) -> \(.ami_after)",
-              "Reason: \(.action_reason)",
-              "Replace paths: \(if .replace_paths == "" then "-" else .replace_paths end)"
-            ]
-          | join("\n")
-        ' tfplan.json >&2
-
-        echo "Canceling. Use the EC2 Power State workflow for start/stop." >&2
-        echo "EC2 create/update/delete/replace is blocked after initial provision." >&2
-        exit 1
 
     - name: Terraform Apply (manual trigger)
       if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply'
