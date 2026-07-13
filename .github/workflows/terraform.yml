@@ -49,7 +49,8 @@ jobs:
       TF_VAR_prod_sonar_token: ${{ secrets.SONAR_TOKEN }}
       TF_VAR_prod_gitops_token: ${{ secrets.GITOPS_TOKEN }}
       TF_VAR_prod_gitops_username: ${{ secrets.GITOPS_USERNAME }}
-
+      TF_VAR_prod_token_encryption_key: ${{ secrets.TOKEN_ENCRYPTION_KEY }}
+ 
       TF_VAR_dev_database_url: ${{ secrets.DATABASE_URL }}
       TF_VAR_dev_calendar_database_url: ${{ secrets.CALENDAR_DATABASE_URL }}
       TF_VAR_dev_profile_database_url: ${{ secrets.PROFILE_DATABASE_URL }}
@@ -62,6 +63,7 @@ jobs:
       TF_VAR_dev_sonar_token: ${{ secrets.SONAR_TOKEN }}
       TF_VAR_dev_gitops_token: ${{ secrets.GITOPS_TOKEN }}
       TF_VAR_dev_gitops_username: ${{ secrets.GITOPS_USERNAME }}
+      TF_VAR_dev_token_encryption_key: ${{ secrets.TOKEN_ENCRYPTION_KEY }}
 
     defaults:
       run:

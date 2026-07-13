@@ -269,6 +269,13 @@ variable "dev_gitops_username" {
   default     = null
 }
 
+variable "dev_token_encryption_key" {
+  description = "Token Encryption Key for development"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
 # Production Secrets
 variable "prod_database_url" {
   description = "Database URL for production"
@@ -359,6 +366,13 @@ variable "prod_gitops_token" {
 variable "prod_gitops_username" {
   description = "GitOps Username for production"
   type        = string
+  default     = null
+}
+
+variable "prod_token_encryption_key" {
+  description = "Token Encryption Key for production"
+  type        = string
+  sensitive   = true
   default     = null
 }
 

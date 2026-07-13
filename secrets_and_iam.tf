@@ -29,6 +29,7 @@ locals {
       SONAR_TOKEN                          = var.dev_sonar_token
       GITOPS_TOKEN                         = var.dev_gitops_token
       GITOPS_USERNAME                      = var.dev_gitops_username
+      TOKEN_ENCRYPTION_KEY                 = var.dev_token_encryption_key
     } : k => v if v != null
   }
 
@@ -48,6 +49,7 @@ locals {
       SONAR_TOKEN                          = var.prod_sonar_token
       GITOPS_TOKEN                         = var.prod_gitops_token
       GITOPS_USERNAME                      = var.prod_gitops_username
+      TOKEN_ENCRYPTION_KEY                 = var.prod_token_encryption_key
     } : k => v if v != null
   }
 
