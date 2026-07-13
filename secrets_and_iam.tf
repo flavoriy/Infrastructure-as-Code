@@ -13,48 +13,28 @@ locals {
   }
 
   # Build overrides from variables (non-null values only)
-  var_dev_secrets = {
+  var_secrets = {
     for k, v in {
-      DATABASE_URL                         = var.dev_database_url
-      CALENDAR_DATABASE_URL                = var.dev_calendar_database_url
-      PROFILE_DATABASE_URL                 = var.dev_profile_database_url
-      TASKS_DATABASE_URL                   = var.dev_tasks_database_url
-      TIKTO_CALENDAR_API_URL               = var.dev_tikto_calendar_api_url
-      TIKTO_DASHBOARD_API_URL              = var.dev_tikto_dashboard_api_url
-      TIKTO_PROFILE_API_URL                = var.dev_tikto_profile_api_url
-      TIKTO_TASKS_API_URL                  = var.dev_tikto_tasks_api_url
-      NEXT_PUBLIC_APP_URL                  = var.dev_next_public_app_url
-      TIKTO_INTERNAL_API_KEY               = var.dev_tikto_internal_api_key
-      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = var.dev_next_public_supabase_publishable_key
-      SONAR_TOKEN                          = var.dev_sonar_token
-      GITOPS_TOKEN                         = var.dev_gitops_token
-      GITOPS_USERNAME                      = var.dev_gitops_username
-      TOKEN_ENCRYPTION_KEY                 = var.dev_token_encryption_key
+      DATABASE_URL                         = var.database_url
+      CALENDAR_DATABASE_URL                = var.calendar_database_url
+      PROFILE_DATABASE_URL                 = var.profile_database_url
+      TASKS_DATABASE_URL                   = var.tasks_database_url
+      TIKTO_CALENDAR_API_URL               = var.tikto_calendar_api_url
+      TIKTO_DASHBOARD_API_URL              = var.tikto_dashboard_api_url
+      TIKTO_PROFILE_API_URL                = var.tikto_profile_api_url
+      TIKTO_TASKS_API_URL                  = var.tikto_tasks_api_url
+      NEXT_PUBLIC_APP_URL                  = var.next_public_app_url
+      TIKTO_INTERNAL_API_KEY               = var.tikto_internal_api_key
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = var.next_public_supabase_publishable_key
+      SONAR_TOKEN                          = var.sonar_token
+      GITOPS_TOKEN                         = var.gitops_token
+      GITOPS_USERNAME                      = var.gitops_username
+      TOKEN_ENCRYPTION_KEY                 = var.token_encryption_key
     } : k => v if v != null
   }
 
-  var_prod_secrets = {
-    for k, v in {
-      DATABASE_URL                         = var.prod_database_url
-      CALENDAR_DATABASE_URL                = var.prod_calendar_database_url
-      PROFILE_DATABASE_URL                 = var.prod_profile_database_url
-      TASKS_DATABASE_URL                   = var.prod_tasks_database_url
-      TIKTO_CALENDAR_API_URL               = var.prod_tikto_calendar_api_url
-      TIKTO_DASHBOARD_API_URL              = var.prod_tikto_dashboard_api_url
-      TIKTO_PROFILE_API_URL                = var.prod_tikto_profile_api_url
-      TIKTO_TASKS_API_URL                  = var.prod_tikto_tasks_api_url
-      NEXT_PUBLIC_APP_URL                  = var.prod_next_public_app_url
-      TIKTO_INTERNAL_API_KEY               = var.prod_tikto_internal_api_key
-      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = var.prod_next_public_supabase_publishable_key
-      SONAR_TOKEN                          = var.prod_sonar_token
-      GITOPS_TOKEN                         = var.prod_gitops_token
-      GITOPS_USERNAME                      = var.prod_gitops_username
-      TOKEN_ENCRYPTION_KEY                 = var.prod_token_encryption_key
-    } : k => v if v != null
-  }
-
-  final_dev_secrets  = merge(local.default_dev_secrets, local.var_dev_secrets)
-  final_prod_secrets = merge(local.default_prod_secrets, local.var_prod_secrets)
+  final_dev_secrets  = merge(local.default_dev_secrets, local.var_secrets)
+  final_prod_secrets = merge(local.default_prod_secrets, local.var_secrets)
 }
 
 # Reusable Secrets Manager Module for Development Environment

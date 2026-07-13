@@ -176,201 +176,101 @@ variable "secret_key_prod" {
   default     = "tikto/prod"
 }
 
-# Development Secrets
-variable "dev_database_url" {
-  description = "Database URL for development"
+# Application Secrets
+variable "database_url" {
+  description = "Database URL"
   type        = string
   sensitive   = true
   default     = null
 }
 
-variable "dev_calendar_database_url" {
-  description = "Calendar Database URL for development"
+variable "calendar_database_url" {
+  description = "Calendar Database URL"
   type        = string
   sensitive   = true
   default     = null
 }
 
-variable "dev_profile_database_url" {
-  description = "Profile Database URL for development"
+variable "profile_database_url" {
+  description = "Profile Database URL"
   type        = string
   sensitive   = true
   default     = null
 }
 
-variable "dev_tasks_database_url" {
-  description = "Tasks Database URL for development"
+variable "tasks_database_url" {
+  description = "Tasks Database URL"
   type        = string
   sensitive   = true
   default     = null
 }
 
-variable "dev_tikto_calendar_api_url" {
-  description = "TikTo Calendar API URL for development"
+variable "tikto_calendar_api_url" {
+  description = "TikTo Calendar API URL"
   type        = string
   default     = null
 }
 
-variable "dev_tikto_dashboard_api_url" {
-  description = "TikTo Dashboard API URL for development"
+variable "tikto_dashboard_api_url" {
+  description = "TikTo Dashboard API URL"
   type        = string
   default     = null
 }
 
-variable "dev_tikto_profile_api_url" {
-  description = "TikTo Profile API URL for development"
+variable "tikto_profile_api_url" {
+  description = "TikTo Profile API URL"
   type        = string
   default     = null
 }
 
-variable "dev_tikto_tasks_api_url" {
-  description = "TikTo Tasks API URL for development"
+variable "tikto_tasks_api_url" {
+  description = "TikTo Tasks API URL"
   type        = string
   default     = null
 }
 
-variable "dev_next_public_app_url" {
-  description = "Next Public App URL for development"
+variable "next_public_app_url" {
+  description = "Next Public App URL"
   type        = string
   default     = null
 }
 
-variable "dev_tikto_internal_api_key" {
-  description = "TikTo Internal API Key for development"
-  type        = string
-  sensitive   = true
-  default     = null
-}
-
-variable "dev_next_public_supabase_publishable_key" {
-  description = "Supabase Publishable Key for development"
+variable "tikto_internal_api_key" {
+  description = "TikTo Internal API Key"
   type        = string
   sensitive   = true
   default     = null
 }
 
-variable "dev_sonar_token" {
-  description = "Sonar Token for development"
+variable "next_public_supabase_publishable_key" {
+  description = "Supabase Publishable Key"
   type        = string
   sensitive   = true
   default     = null
 }
 
-variable "dev_gitops_token" {
-  description = "GitOps Token for development"
+variable "sonar_token" {
+  description = "Sonar Token"
   type        = string
   sensitive   = true
   default     = null
 }
 
-variable "dev_gitops_username" {
-  description = "GitOps Username for development"
-  type        = string
-  default     = null
-}
-
-variable "dev_token_encryption_key" {
-  description = "Token Encryption Key for development"
+variable "gitops_token" {
+  description = "GitOps Token"
   type        = string
   sensitive   = true
   default     = null
 }
 
-# Production Secrets
-variable "prod_database_url" {
-  description = "Database URL for production"
-  type        = string
-  sensitive   = true
-  default     = null
-}
-
-variable "prod_calendar_database_url" {
-  description = "Calendar Database URL for production"
-  type        = string
-  sensitive   = true
-  default     = null
-}
-
-variable "prod_profile_database_url" {
-  description = "Profile Database URL for production"
-  type        = string
-  sensitive   = true
-  default     = null
-}
-
-variable "prod_tasks_database_url" {
-  description = "Tasks Database URL for production"
-  type        = string
-  sensitive   = true
-  default     = null
-}
-
-variable "prod_tikto_calendar_api_url" {
-  description = "TikTo Calendar API URL for production"
+variable "gitops_username" {
+  description = "GitOps Username"
   type        = string
   default     = null
 }
 
-variable "prod_tikto_dashboard_api_url" {
-  description = "TikTo Dashboard API URL for production"
-  type        = string
-  default     = null
-}
-
-variable "prod_tikto_profile_api_url" {
-  description = "TikTo Profile API URL for production"
-  type        = string
-  default     = null
-}
-
-variable "prod_tikto_tasks_api_url" {
-  description = "TikTo Tasks API URL for production"
-  type        = string
-  default     = null
-}
-
-variable "prod_next_public_app_url" {
-  description = "Next Public App URL for production"
-  type        = string
-  default     = null
-}
-
-variable "prod_tikto_internal_api_key" {
-  description = "TikTo Internal API Key for production"
-  type        = string
-  sensitive   = true
-  default     = null
-}
-
-variable "prod_next_public_supabase_publishable_key" {
-  description = "Supabase Publishable Key for production"
-  type        = string
-  sensitive   = true
-  default     = null
-}
-
-variable "prod_sonar_token" {
-  description = "Sonar Token for production"
-  type        = string
-  sensitive   = true
-  default     = null
-}
-
-variable "prod_gitops_token" {
-  description = "GitOps Token for production"
-  type        = string
-  sensitive   = true
-  default     = null
-}
-
-variable "prod_gitops_username" {
-  description = "GitOps Username for production"
-  type        = string
-  default     = null
-}
-
-variable "prod_token_encryption_key" {
-  description = "Token Encryption Key for production"
+variable "token_encryption_key" {
+  description = "Token Encryption Key"
   type        = string
   sensitive   = true
   default     = null
