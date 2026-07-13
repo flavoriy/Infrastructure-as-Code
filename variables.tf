@@ -100,3 +100,80 @@ variable "eks_max_size" {
   type        = number
   default     = 5
 }
+
+# Dedicated Argo CD Management Server Variables
+variable "argo_server_private_ip" {
+  description = "Private IP for the dedicated Argo CD management server"
+  type        = string
+  default     = "10.0.1.10"
+}
+
+variable "instance_type_argo_server" {
+  description = "The EC2 instance type for the dedicated Argo CD management server"
+  type        = string
+  default     = "t3.small"
+}
+
+variable "ingress_ports_argo_server" {
+  description = "List of public ingress ports for the Argo CD management server"
+  type        = list(number)
+  default     = [80, 443, 30080, 30443]
+}
+
+variable "admin_ports_argo_server" {
+  description = "List of admin ports to restrict for the Argo CD management server"
+  type        = list(number)
+  default     = [22, 6443]
+}
+
+variable "volume_size_argo_server" {
+  description = "The size of the root EBS volume for the Argo CD management server (in GB)"
+  type        = number
+  default     = 20
+}
+
+# OpenSearch Service Variables
+variable "opensearch_engine_version" {
+  description = "OpenSearch engine version"
+  type        = string
+  default     = "OpenSearch_2.11"
+}
+
+variable "opensearch_instance_type" {
+  description = "Instance type for Prod OpenSearch cluster data nodes"
+  type        = string
+  default     = "t3.medium.search"
+}
+
+variable "opensearch_instance_count" {
+  description = "Number of data nodes in Prod OpenSearch cluster (2 for Multi-AZ)"
+  type        = number
+  default     = 2
+}
+
+variable "opensearch_volume_size" {
+  description = "EBS volume size in GB per OpenSearch node"
+  type        = number
+  default     = 30
+}
+
+variable "opensearch_volume_type" {
+  description = "EBS volume type for OpenSearch cluster"
+  type        = string
+  default     = "gp3"
+}
+
+# AWS Secrets Manager Variables
+variable "secret_key_dev" {
+  description = "AWS Secrets Manager key name for development environment"
+  type        = string
+  default     = "tikto/dev"
+}
+
+variable "secret_key_prod" {
+  description = "AWS Secrets Manager key name for production environment"
+  type        = string
+  default     = "tikto/prod"
+}
+
+

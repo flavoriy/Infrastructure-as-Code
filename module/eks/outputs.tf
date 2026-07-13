@@ -22,3 +22,14 @@ output "node_group_id" {
   description = "EKS Node Group ID"
   value       = aws_eks_node_group.nodes.id
 }
+
+output "node_role_name" {
+  description = "IAM Role Name for EKS worker nodes"
+  value       = aws_iam_role.node_role.name
+}
+
+output "node_role_arn" {
+  description = "IAM Role ARN for EKS worker nodes"
+  value       = aws_iam_role.node_role.arn
+}
+

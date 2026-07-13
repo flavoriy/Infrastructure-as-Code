@@ -56,33 +56,16 @@ variable "private_ip" {
   type        = string
 }
 
-variable "ingress_ports" {
-  description = "List of ingress ports to allow in the security group"
-  type        = list(number)
-}
-
-variable "public_ingress_cidr_blocks" {
-  description = "CIDR blocks allowed to reach public ingress ports"
-  type        = list(string)
-  default     = ["0.0.0.0/0"]
-}
-
-variable "private_ingress_ports" {
-  description = "List of TCP ingress ports to allow only from private CIDR blocks"
-  type        = list(number)
-  default     = []
-}
-
-variable "private_ingress_udp_ports" {
-  description = "List of UDP ingress ports to allow only from private CIDR blocks"
-  type        = list(number)
-  default     = []
-}
-
-variable "private_ingress_cidr_blocks" {
-  description = "Private CIDR blocks allowed to reach private ingress ports"
-  type        = list(string)
-  default     = []
+variable "ingress_rules" {
+  description = "List of ingress rules specifying port, protocol, cidr_blocks and optional description"
+  type = list(object({
+    from_port   = number
+    to_port     = number
+    protocol    = string
+    cidr_blocks = list(string)
+    description = optional(string)
+  }))
+  default = []
 }
 
 variable "volume_size" {
@@ -97,15 +80,9 @@ variable "associate_eip" {
   default     = true
 }
 
-variable "admin_ingress_ports" {
-  description = "List of admin TCP ports to restrict to admin CIDR blocks (e.g. 22, 6443)"
-  type        = list(number)
-  default     = []
-}
-
-variable "admin_ingress_cidr_blocks" {
-  description = "CIDR blocks allowed to reach admin ingress ports"
-  type        = list(string)
-  default     = ["0.0.0.0/0"]
+variable "user_data" {
+  description = "User data script to execute on initial instance boot"
+  type        = string
+  default     = null
 }
 

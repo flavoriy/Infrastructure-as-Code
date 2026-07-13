@@ -13,3 +13,8 @@ override.tf.json
 # Node-specific setup scripts
 scripts/nodes/
 
+# Local secret environment files
+.env
+*.env
+
+

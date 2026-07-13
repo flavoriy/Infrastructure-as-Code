@@ -5,46 +5,13 @@ resource "aws_security_group" "sg" {
   vpc_id      = var.vpc_id
 
   dynamic "ingress" {
-    for_each = var.ingress_ports
+    for_each = var.ingress_rules
     content {
-      description = "Allow public port ${ingress.value}"
-      from_port   = ingress.value
-      to_port     = ingress.value
-      protocol    = "tcp"
-      cidr_blocks = var.public_ingress_cidr_blocks
-    }
-  }
-
-  dynamic "ingress" {
-    for_each = var.private_ingress_ports
-    content {
-      description = "Allow private TCP port ${ingress.value}"
-      from_port   = ingress.value
-      to_port     = ingress.value
-      protocol    = "tcp"
-      cidr_blocks = var.private_ingress_cidr_blocks
-    }
-  }
-
-  dynamic "ingress" {
-    for_each = var.private_ingress_udp_ports
-    content {
-      description = "Allow private UDP port ${ingress.value}"
-      from_port   = ingress.value
-      to_port     = ingress.value
-      protocol    = "udp"
-      cidr_blocks = var.private_ingress_cidr_blocks
-    }
-  }
-
-  dynamic "ingress" {
-    for_each = var.admin_ingress_ports
-    content {
-      description = "Allow admin TCP port ${ingress.value}"
-      from_port   = ingress.value
-      to_port     = ingress.value
-      protocol    = "tcp"
-      cidr_blocks = var.admin_ingress_cidr_blocks
+      description = lookup(ingress.value, "description", null)
+      from_port   = ingress.value.from_port
+      to_port     = ingress.value.to_port
+      protocol    = ingress.value.protocol
+      cidr_blocks = ingress.value.cidr_blocks
     }
   }
 
@@ -88,6 +55,8 @@ resource "aws_instance" "ec2" {
     http_tokens                 = "required"
     http_put_response_hop_limit = 1
   }
+
+  user_data = var.user_data
 
   dynamic "credit_specification" {
     for_each = length(regexall("^t[0-9]", var.aws_instance_type)) > 0 ? [var.cpu_credits] : []

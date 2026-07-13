@@ -22,3 +22,22 @@ eks_node_instance_types = ["t3.medium", "t3a.medium", "t2.medium"]
 eks_desired_size        = 3
 eks_min_size            = 2
 eks_max_size            = 5
+
+# Dedicated Argo CD Management Server
+argo_server_private_ip    = "10.0.1.10"
+instance_type_argo_server = "t3.small"
+volume_size_argo_server   = 20
+ingress_ports_argo_server = [80, 443, 30080, 30443]
+admin_ports_argo_server   = [22, 6443]
+
+# AWS OpenSearch Managed Cluster Settings (Centralized Logging)
+opensearch_engine_version = "OpenSearch_2.11"
+opensearch_instance_type  = "t3.medium.search"
+opensearch_instance_count = 2
+opensearch_volume_size    = 30
+opensearch_volume_type    = "gp3"
+
+# AWS Secrets Manager Settings
+secret_key_dev  = "tikto/dev"
+secret_key_prod = "tikto/prod"
+
