@@ -1,20 +1,12 @@
-# TikTo Cloud Platform Infrastructure (IaC)
+# TikTo AWS Infrastructure (IaC)
 
-[![Terraform](https://img.shields.io/badge/Terraform-1.5%2B-blueviolet?style=flat&logo=terraform)](https://www.terraform.io/)
-[![AWS](https://img.shields.io/badge/AWS-Singapore-orange?style=flat&logo=amazon-aws)](https://aws.amazon.com/)
-[![Kubernetes](https://img.shields.io/badge/Kubernetes-1.31-blue?style=flat&logo=kubernetes)](https://kubernetes.io/)
-[![GitOps](https://img.shields.io/badge/GitOps-ArgoCD-orange?style=flat&logo=argo)](https://argoproj.github.io/cd/)
-
-## 1. Executive Summary
-This repository contains the definitive Infrastructure as Code (IaC) for the **TikTo** platform. It utilizes Terraform to provision a high-availability, multi-environment cloud ecosystem on AWS (`ap-southeast-1` Singapore). The architecture is designed with a "Security-First" and "GitOps-Ready" mindset, separating concerns between Production (EKS) and Development (K3s) workloads.
+Modular Terraform setup to deploy the AWS cloud infrastructure for the **TikTo** platform (VPC, EC2, EKS, OpenSearch, and Secrets Manager).
 
 ---
 
-## 2. Infrastructure Architecture & Topology
+## 🗺️ System Topology
 
-The platform is deployed across a multi-tier VPC architecture. Direct admin access to the private subnets is securely handled via a Tailscale VPN Subnet Router.
-
-### System Topology Diagram
+This diagram shows how public users access the app via the Load Balancer, and how developers connect securely to the private subnet via Tailscale VPN.
 
 ```mermaid
 graph TD
@@ -49,60 +41,34 @@ graph TD
 
 ---
 
-## 3. IaC Pillars
+## 📂 Project Structure
 
-*   **Modular Design**: The infrastructure is composed of reusable, versioned modules (VPC, EC2, EKS, OpenSearch, Secrets Manager). This ensures consistency and prevents configuration drift.
-*   **GitOps Delivery**: Cloud infrastructure serves as the foundation for Argo CD. Workload states are automatically reconciled against manifests defined in the GitOps repository.
-*   **Security & Secrets Lifecycle**:
-    *   *Least Privilege*: Granular IAM policies are attached to EKS worker node roles for passwordless log ingestion to OpenSearch and secrets retrieval.
-    *   *Zero Hardcoded Secrets*: All application credentials are dynamically injected into AWS Secrets Manager straight from GitHub Secrets during CI/CD execution.
-    *   *Workload Isolation*: Workloads run inside private subnets and access external networks securely via NAT Gateways.
-
----
-
-## 4. Technology Stack
-
-| Category | Tooling | Scope / Configuration |
-| :--- | :--- | :--- |
-| **Cloud Provider** | AWS (Amazon Web Services) | Region: `ap-southeast-1` (Singapore) |
-| **Provisioning** | Terraform | CLI Version `>= 1.10` |
-| **Orchestration** | Amazon EKS & K3s | Prod: EKS `v1.31` / Dev: K3s |
-| **CI/CD / GitOps** | Argo CD | Dedicated EC2 Server (`t3.small`) |
-| **Networking** | AWS VPC & Tailscale | VPC CIDR `10.0.0.0/16` / WireGuard VPN |
-| **Logging** | AWS OpenSearch Service | Domain `v2.11` (Multi-AZ Data Nodes) |
-| **Secret Management** | AWS Secrets Manager | Keys: `tikto/dev` & `tikto/prod` |
-
----
-
-## 5. Repository Structure
+Here is how the repository is organized:
 
 ```text
 .
-├── module/                 # Reusable Terraform modules
+├── module/                 # Reusable infrastructure modules
 │   ├── vpc/                # Multi-AZ VPC networking
 │   ├── ec2/                # Standalone EC2 instances (Argo CD & K3s Dev)
-│   ├── eks/                # High-Availability EKS Cluster & Spot Node Group
-│   ├── opensearch/         # Managed OpenSearch logging cluster
-│   └── secrets_manager/    # Reusable AWS Secrets Manager module
-├── scripts/                # Initialization and setup scripts
-│   ├── common/             # OS package bootstrap scripts
+│   ├── eks/                # EKS Cluster & Spot Node Group (Prod)
+│   ├── opensearch/         # OpenSearch logging cluster (Prod)
+│   └── secrets_manager/    # AWS Secrets Manager module
+├── scripts/                # Node bootstrap and initialization scripts
+│   ├── common/             # Base OS package setup
 │   ├── k3s/                # Local k3s and Argo CD configuration
-│   └── nodes/              # Node-specific setup scripts (Argo CD & K3s Dev)
-├── main.tf                 # Global orchestration logic
+│   └── nodes/              # Node setup scripts (Argo CD & K3s Dev)
+├── main.tf                 # Orchestration of all modules
 ├── variables.tf            # Input variable declarations
 ├── outputs.tf              # Endpoints and metadata outputs
-├── secrets_and_iam.tf      # Secrets Manager stores & IAM policy bindings
-└── terraform.tfvars        # Default environment configuration
+├── secrets_and_iam.tf      # Secrets Manager stores & IAM policy configurations
+└── terraform.tfvars        # Default configuration values
 ```
 
 ---
 
-## 6. Deployment Workflow
+## 🛠️ Prerequisites & GitHub Secrets
 
-### Prerequisites
-1.  **AWS S3 Backend**: An S3 bucket named `bucket-project-devops-tfstate` created in `ap-southeast-1` to store the state file.
-2.  **EC2 Key Pair**: An EC2 Key Pair named `devops-project` generated in `ap-southeast-1` for standalone EC2 instances.
-3.  **GitHub Environment Secrets**: Configure the following secrets on your GitHub repository (under the `production` environment):
+Before running the deployment, configure these secrets in your GitHub repository under the `production` environment:
 
 | Secret Key | Description | Example Value |
 |---|---|---|
@@ -121,26 +87,31 @@ graph TD
 | `TOKEN_ENCRYPTION_KEY` | JWT token encryption key | `super-secret-jwt-encryption-key-32-chars` |
 | `TAILSCALE_AUTHKEY` | Tailscale subnet router auth key | `tskey-auth-k8s-abcdef1234567890-abcdef` |
 
-### Step 1: Initialization
-Initialize the backend and download provider plugins:
+---
+
+## 🚀 How to Run
+
+### Deploy Locally
+To deploy from your local CLI, export your credentials and run the commands:
+
 ```bash
+# 1. AWS Credentials
+export AWS_ACCESS_KEY_ID="your-access-key"
+export AWS_SECRET_ACCESS_KEY="your-secret-key"
+export AWS_DEFAULT_REGION="ap-southeast-1"
+
+# 2. Export variables (e.g.)
+export TF_VAR_database_url="postgresql://..."
+export TF_VAR_tailscale_authkey="tskey-auth-..."
+
+# 3. Apply
 terraform init
-```
-
-### Step 2: Plan
-Generate and review the execution plan to ensure alignment:
-```bash
 terraform plan -out=tfplan
-```
-
-### Step 3: Apply
-Provision the infrastructure:
-```bash
 terraform apply tfplan
 ```
 
-### Step 4: Connect to EKS
-Once provisioning completes, update your local Kubeconfig:
+### Connect to the EKS Cluster
+Once provisioning is done, update your local kubeconfig:
 ```bash
 aws eks update-kubeconfig --region ap-southeast-1 --name tikto-prod-eks
 kubectl get nodes
@@ -148,16 +119,7 @@ kubectl get nodes
 
 ---
 
-## 7. Operational Notes
-
-### Cost Optimization
-The production EKS environment leverages AWS Spot Instances (`t3.medium`, `t3a.medium`, `t2.medium`) managed by the EKS Node Group, cutting compute costs by **70-90%** compared to On-Demand pricing.
-
-### Secure Connectivity
-Direct access to resources inside private subnets is handled via Tailscale. The `argo_server` instance runs a Tailscale subnet router, allowing authorized developers to access internal Kubernetes APIs and Kibana dashboards securely without exposing public ports.
-
----
-
-## 8. Maintainers
-**Infrastructure Team - TikTo Project**
-This infrastructure is managed strictly via IaC. Manual changes via the AWS Console are prohibited to prevent state drift.
+## 💡 Key Design Notes
+*   **Cost Optimization**: Production EKS uses Spot Instances (`t3.medium`, `t3a.medium`, `t2.medium`), cutting cluster compute costs by **70%**.
+*   **Secure Access**: No public ports are exposed for administration. Argo CD, K3s APIs, and Kibana logs are only reachable after logging into the VPC via Tailscale VPN.
+*   **Encrypted Secrets**: App secrets are pushed dynamically from GitHub Secrets to AWS Secrets Manager using variables, avoiding hardcoding keys in Git.
