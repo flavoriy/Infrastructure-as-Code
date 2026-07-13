@@ -47,6 +47,16 @@ jobs:
       TF_VAR_prod_tikto_tasks_api_url: ${{ secrets.TIKTO_TASKS_API_URL }}
       TF_VAR_prod_next_public_app_url: ${{ secrets.NEXT_PUBLIC_APP_URL }}
 
+      TF_VAR_dev_database_url: ${{ secrets.DATABASE_URL }}
+      TF_VAR_dev_calendar_database_url: ${{ secrets.CALENDAR_DATABASE_URL }}
+      TF_VAR_dev_profile_database_url: ${{ secrets.PROFILE_DATABASE_URL }}
+      TF_VAR_dev_tasks_database_url: ${{ secrets.TASKS_DATABASE_URL }}
+      TF_VAR_dev_tikto_calendar_api_url: ${{ secrets.TIKTO_CALENDAR_API_URL }}
+      TF_VAR_dev_tikto_dashboard_api_url: ${{ secrets.TIKTO_DASHBOARD_API_URL }}
+      TF_VAR_dev_tikto_profile_api_url: ${{ secrets.TIKTO_PROFILE_API_URL }}
+      TF_VAR_dev_tikto_tasks_api_url: ${{ secrets.TIKTO_TASKS_API_URL }}
+      TF_VAR_dev_next_public_app_url: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+
     defaults:
       run:
         shell: bash
