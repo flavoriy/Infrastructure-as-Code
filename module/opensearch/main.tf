@@ -32,6 +32,7 @@ resource "aws_opensearch_domain" "opensearch" {
   # checkov:skip=CKV_AWS_247:AWS-managed KMS encryption is sufficient, avoiding custom CMK cost in this lab
   # checkov:skip=CKV_AWS_84:Domain logging is disabled by default to save CloudWatch logging costs
   # checkov:skip=CKV_AWS_317:Domain audit logging is disabled to keep logging costs down
+  # checkov:skip=CKV2_AWS_52:Fine-grained access control is not required for logs in this lab environment
 
   domain_name    = "${var.project_name}-${var.environment}-logs"
   engine_version = var.engine_version
