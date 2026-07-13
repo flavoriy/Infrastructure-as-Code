@@ -46,6 +46,9 @@ jobs:
       TF_VAR_prod_tikto_profile_api_url: ${{ secrets.TIKTO_PROFILE_API_URL }}
       TF_VAR_prod_tikto_tasks_api_url: ${{ secrets.TIKTO_TASKS_API_URL }}
       TF_VAR_prod_next_public_app_url: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+      TF_VAR_prod_sonar_token: ${{ secrets.SONAR_TOKEN }}
+      TF_VAR_prod_gitops_token: ${{ secrets.GITOPS_TOKEN }}
+      TF_VAR_prod_gitops_username: ${{ secrets.GITOPS_USERNAME }}
 
       TF_VAR_dev_database_url: ${{ secrets.DATABASE_URL }}
       TF_VAR_dev_calendar_database_url: ${{ secrets.CALENDAR_DATABASE_URL }}
@@ -56,6 +59,9 @@ jobs:
       TF_VAR_dev_tikto_profile_api_url: ${{ secrets.TIKTO_PROFILE_API_URL }}
       TF_VAR_dev_tikto_tasks_api_url: ${{ secrets.TIKTO_TASKS_API_URL }}
       TF_VAR_dev_next_public_app_url: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+      TF_VAR_dev_sonar_token: ${{ secrets.SONAR_TOKEN }}
+      TF_VAR_dev_gitops_token: ${{ secrets.GITOPS_TOKEN }}
+      TF_VAR_dev_gitops_username: ${{ secrets.GITOPS_USERNAME }}
 
     defaults:
       run:

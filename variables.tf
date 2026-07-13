@@ -249,6 +249,26 @@ variable "dev_next_public_supabase_publishable_key" {
   default     = null
 }
 
+variable "dev_sonar_token" {
+  description = "Sonar Token for development"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "dev_gitops_token" {
+  description = "GitOps Token for development"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "dev_gitops_username" {
+  description = "GitOps Username for development"
+  type        = string
+  default     = null
+}
+
 # Production Secrets
 variable "prod_database_url" {
   description = "Database URL for production"
@@ -319,6 +339,26 @@ variable "prod_next_public_supabase_publishable_key" {
   description = "Supabase Publishable Key for production"
   type        = string
   sensitive   = true
+  default     = null
+}
+
+variable "prod_sonar_token" {
+  description = "Sonar Token for production"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "prod_gitops_token" {
+  description = "GitOps Token for production"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "prod_gitops_username" {
+  description = "GitOps Username for production"
+  type        = string
   default     = null
 }
 

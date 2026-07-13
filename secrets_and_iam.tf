@@ -26,6 +26,9 @@ locals {
       NEXT_PUBLIC_APP_URL                  = var.dev_next_public_app_url
       TIKTO_INTERNAL_API_KEY               = var.dev_tikto_internal_api_key
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = var.dev_next_public_supabase_publishable_key
+      SONAR_TOKEN                          = var.dev_sonar_token
+      GITOPS_TOKEN                         = var.dev_gitops_token
+      GITOPS_USERNAME                      = var.dev_gitops_username
     } : k => v if v != null
   }
 
@@ -42,6 +45,9 @@ locals {
       NEXT_PUBLIC_APP_URL                  = var.prod_next_public_app_url
       TIKTO_INTERNAL_API_KEY               = var.prod_tikto_internal_api_key
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = var.prod_next_public_supabase_publishable_key
+      SONAR_TOKEN                          = var.prod_sonar_token
+      GITOPS_TOKEN                         = var.prod_gitops_token
+      GITOPS_USERNAME                      = var.prod_gitops_username
     } : k => v if v != null
   }
 
