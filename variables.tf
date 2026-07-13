@@ -176,4 +176,150 @@ variable "secret_key_prod" {
   default     = "tikto/prod"
 }
 
+# Development Secrets
+variable "dev_database_url" {
+  description = "Database URL for development"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "dev_calendar_database_url" {
+  description = "Calendar Database URL for development"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "dev_profile_database_url" {
+  description = "Profile Database URL for development"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "dev_tasks_database_url" {
+  description = "Tasks Database URL for development"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "dev_tikto_calendar_api_url" {
+  description = "TikTo Calendar API URL for development"
+  type        = string
+  default     = null
+}
+
+variable "dev_tikto_dashboard_api_url" {
+  description = "TikTo Dashboard API URL for development"
+  type        = string
+  default     = null
+}
+
+variable "dev_tikto_profile_api_url" {
+  description = "TikTo Profile API URL for development"
+  type        = string
+  default     = null
+}
+
+variable "dev_tikto_tasks_api_url" {
+  description = "TikTo Tasks API URL for development"
+  type        = string
+  default     = null
+}
+
+variable "dev_next_public_app_url" {
+  description = "Next Public App URL for development"
+  type        = string
+  default     = null
+}
+
+variable "dev_tikto_internal_api_key" {
+  description = "TikTo Internal API Key for development"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "dev_next_public_supabase_publishable_key" {
+  description = "Supabase Publishable Key for development"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+# Production Secrets
+variable "prod_database_url" {
+  description = "Database URL for production"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "prod_calendar_database_url" {
+  description = "Calendar Database URL for production"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "prod_profile_database_url" {
+  description = "Profile Database URL for production"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "prod_tasks_database_url" {
+  description = "Tasks Database URL for production"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "prod_tikto_calendar_api_url" {
+  description = "TikTo Calendar API URL for production"
+  type        = string
+  default     = null
+}
+
+variable "prod_tikto_dashboard_api_url" {
+  description = "TikTo Dashboard API URL for production"
+  type        = string
+  default     = null
+}
+
+variable "prod_tikto_profile_api_url" {
+  description = "TikTo Profile API URL for production"
+  type        = string
+  default     = null
+}
+
+variable "prod_tikto_tasks_api_url" {
+  description = "TikTo Tasks API URL for production"
+  type        = string
+  default     = null
+}
+
+variable "prod_next_public_app_url" {
+  description = "Next Public App URL for production"
+  type        = string
+  default     = null
+}
+
+variable "prod_tikto_internal_api_key" {
+  description = "TikTo Internal API Key for production"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "prod_next_public_supabase_publishable_key" {
+  description = "Supabase Publishable Key for production"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
 

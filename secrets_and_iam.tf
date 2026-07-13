@@ -1,37 +1,52 @@
-# Read local .env file if present in IaC directory
 locals {
-  env_file_path   = "${path.module}/.env"
-  env_file_exists = fileexists(local.env_file_path)
-
-  # Read file lines and filter non-empty, non-comment lines containing '='
-  raw_env_lines = local.env_file_exists ? compact(split("\n", file(local.env_file_path))) : []
-  valid_env_lines = [
-    for line in local.raw_env_lines :
-    trimspace(line)
-    if length(trimspace(line)) > 0 && !startswith(trimspace(line), "#") && contains(split("", line), "=")
-  ]
-
-  # Parse KEY=VALUE lines into a map
-  parsed_env_vars = {
-    for line in local.valid_env_lines :
-    trimspace(split("=", line)[0]) => trimspace(join("=", slice(split("=", line), 1, length(split("=", line)))))
-  }
-
-  # Default fallback secrets if .env is missing or incomplete
+  # Default fallback secrets if variables are missing or incomplete
   default_dev_secrets = {
     DATABASE_URL                         = "postgresql://user:password@host:5432/tikto_dev"
-    TIKTO_INTERNAL_API_KEY              = "dev-internal-api-key-secret"
+    TIKTO_INTERNAL_API_KEY               = "dev-internal-api-key-secret"
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "dev-supabase-key"
   }
 
   default_prod_secrets = {
     DATABASE_URL                         = "postgresql://user:password@host:5432/tikto_prod"
-    TIKTO_INTERNAL_API_KEY              = "prod-internal-api-key-secret"
+    TIKTO_INTERNAL_API_KEY               = "prod-internal-api-key-secret"
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "prod-supabase-key"
   }
 
-  final_dev_secrets  = merge(local.default_dev_secrets, local.parsed_env_vars)
-  final_prod_secrets = merge(local.default_prod_secrets, local.parsed_env_vars)
+  # Build overrides from variables (non-null values only)
+  var_dev_secrets = {
+    for k, v in {
+      DATABASE_URL                         = var.dev_database_url
+      CALENDAR_DATABASE_URL                = var.dev_calendar_database_url
+      PROFILE_DATABASE_URL                 = var.dev_profile_database_url
+      TASKS_DATABASE_URL                   = var.dev_tasks_database_url
+      TIKTO_CALENDAR_API_URL               = var.dev_tikto_calendar_api_url
+      TIKTO_DASHBOARD_API_URL              = var.dev_tikto_dashboard_api_url
+      TIKTO_PROFILE_API_URL                = var.dev_tikto_profile_api_url
+      TIKTO_TASKS_API_URL                  = var.dev_tikto_tasks_api_url
+      NEXT_PUBLIC_APP_URL                  = var.dev_next_public_app_url
+      TIKTO_INTERNAL_API_KEY               = var.dev_tikto_internal_api_key
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = var.dev_next_public_supabase_publishable_key
+    } : k => v if v != null
+  }
+
+  var_prod_secrets = {
+    for k, v in {
+      DATABASE_URL                         = var.prod_database_url
+      CALENDAR_DATABASE_URL                = var.prod_calendar_database_url
+      PROFILE_DATABASE_URL                 = var.prod_profile_database_url
+      TASKS_DATABASE_URL                   = var.prod_tasks_database_url
+      TIKTO_CALENDAR_API_URL               = var.prod_tikto_calendar_api_url
+      TIKTO_DASHBOARD_API_URL              = var.prod_tikto_dashboard_api_url
+      TIKTO_PROFILE_API_URL                = var.prod_tikto_profile_api_url
+      TIKTO_TASKS_API_URL                  = var.prod_tikto_tasks_api_url
+      NEXT_PUBLIC_APP_URL                  = var.prod_next_public_app_url
+      TIKTO_INTERNAL_API_KEY               = var.prod_tikto_internal_api_key
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = var.prod_next_public_supabase_publishable_key
+    } : k => v if v != null
+  }
+
+  final_dev_secrets  = merge(local.default_dev_secrets, local.var_dev_secrets)
+  final_prod_secrets = merge(local.default_prod_secrets, local.var_prod_secrets)
 }
 
 # Reusable Secrets Manager Module for Development Environment
