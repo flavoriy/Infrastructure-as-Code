@@ -37,7 +37,13 @@ module "argo_server" {
   private_ip        = var.argo_server_private_ip
   volume_size       = var.volume_size_argo_server
   associate_eip     = false
-  user_data         = file("${path.module}/scripts/nodes/argo_server/setup.bash")
+  user_data = join("\n", [
+    "#!/bin/bash",
+    "export TAILSCALE_AUTHKEY=\"${var.tailscale_authkey}\"",
+    "export PRIVATE_IP=\"${var.argo_server_private_ip}\"",
+    "export NODE_NAME=\"argo-server\"",
+    file("${path.module}/scripts/nodes/argo_server/setup.bash")
+  ])
 
   ingress_rules = concat(
     [
@@ -74,7 +80,12 @@ module "k3s_dev" {
   private_ip        = var.dev_private_ips[0]
   volume_size       = var.volume_size_k3s_dev
   associate_eip     = false
-  user_data         = file("${path.module}/scripts/nodes/k3s_dev/setup.bash")
+  user_data = join("\n", [
+    "#!/bin/bash",
+    "export PRIVATE_IP=\"${var.dev_private_ips[0]}\"",
+    "export NODE_NAME=\"k3s-dev\"",
+    file("${path.module}/scripts/nodes/k3s_dev/setup.bash")
+  ])
 
   ingress_rules = concat(
     [
