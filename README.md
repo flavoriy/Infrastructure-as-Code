@@ -1,68 +1,56 @@
 # TikTo AWS Infrastructure (IaC)
 
-This repository defines the AWS cloud infrastructure layer for TikTo using modular Terraform. It provisions the networking, security, compute foundation, managed Kubernetes (EKS), centralized logging (AWS OpenSearch), and secret management (AWS Secrets Manager).
+This repository defines the modular, production-ready AWS cloud infrastructure layer for the **TikTo** application using **Terraform**. It automates the provisioning of secure networking, compute, managed Kubernetes (Amazon EKS), centralized logging (AWS OpenSearch), and secure secrets storage (AWS Secrets Manager).
 
-Terraform is responsible for the cloud foundation, IAM policies, and managed services. Application workloads, GitOps reconciliation, and runtime controllers (Argo CD, External Secrets Operator, Fluent Bit) are deployed via the GitOps repository.
+---
 
-## Key Capabilities
+## 🗺️ System Architecture Topology
 
-- **Modular Architecture**: Reusable Terraform modules for AWS VPC, EC2 instances, EKS Node Groups, AWS OpenSearch Service, and AWS Secrets Manager.
-- **Production High Availability**: Multi-AZ Amazon EKS Cluster (`v1.31`) backed by Spot/On-Demand mixed instance types for ~70% cost savings.
-- **Centralized Logging**: AWS OpenSearch Service (`v2.11`) deployed in Multi-AZ VPC mode for Production log aggregation and Kibana dashboards.
-- **Automated Secret Provisioning**: AWS Secrets Manager integrated with local `.env` parsing for `tikto/dev` and `tikto/prod` secret keys.
-- **Automated IAM Security**: Dedicated IAM policies attached to EKS worker node roles for passwordless OpenSearch log ingestion and External Secrets Operator access.
-- **Remote State Locking**: Configured with Amazon S3 backend and DynamoDB locking.
+The infrastructure is designed with strict network segregation between public client traffic and administrative DevOps management traffic.
 
-## Architecture Topology
-
-![AWS System Architecture Topology](./aws_topology.jpg)
-
-### Interactive Mermaid Flowchart
-
-Below is the native version-controlled system architecture diagram:
+### Native System Flow (Mermaid Diagram)
 
 ```mermaid
-graph LR
+graph TD
     %% Styles and colors
-    classDef git fill:#F5F5F5,stroke:#9E9E9E,stroke-width:1px,color:#333;
-    classDef public fill:#E3F2FD,stroke:#2196F3,stroke-width:1px,color:#0D47A1;
-    classDef private fill:#EDE7F6,stroke:#673AB7,stroke-width:1px,color:#311B92;
-    classDef aws fill:#FFF3E0,stroke:#FF9800,stroke-width:1px,color:#E65100;
-    classDef vpn fill:#E8F5E9,stroke:#4CAF50,stroke-width:1px,color:#1B5E20;
+    classDef git fill:#F9F9F9,stroke:#D1D1D1,stroke-width:1px,color:#333;
+    classDef public fill:#E8F4FD,stroke:#1E88E5,stroke-width:1.5px,color:#0D47A1;
+    classDef private fill:#F3E5F5,stroke:#8E24AA,stroke-width:1.5px,color:#4A148C;
+    classDef aws fill:#FFF3E0,stroke:#FB8C00,stroke-width:1.5px,color:#E65100;
+    classDef vpn fill:#E8F5E9,stroke:#43A047,stroke-width:1.5px,color:#1B5E20;
 
     %% Outside VPC
-    GitHub["GitHub (gitops-manifest)"]:::git
-    User["End User"]:::git
-    Admin["DevOps Admin"]:::git
-    Tailscale["Tailscale VPN"]:::vpn
+    GitHub["GitHub Actions (CI/CD Pipeline)"]:::git
+    User["End User (Public Client)"]:::git
+    Admin["DevOps Engineer"]:::git
+    Tailscale["Tailscale VPN (WireGuard Gateway)"]:::vpn
 
-    subgraph AWS_Cloud ["AWS Cloud (ap-southeast-1 Singapore)"]
-        EKS_Control["AWS Managed EKS Control Plane (Outside Customer VPC)"]:::aws
+    subgraph AWS_Cloud ["AWS Cloud (Region: ap-southeast-1 Singapore)"]
+        EKS_Control["AWS Managed EKS Control Plane"]:::aws
 
         subgraph VPC ["AWS VPC (10.0.0.0/16)"]
             %% Public Subnet
-            subgraph Public_Subnet ["Public Subnet (10.0.1.0/24)"]
+            subgraph Public_Subnet ["Public Subnets (Multi-AZ)"]
                 IGW["Internet Gateway (IGW)"]:::public
                 NAT["NAT Gateway"]:::public
                 ALB["AWS Application Load Balancer"]:::public
-                ArgoCD["Argo CD Server (EC2)"]:::public
+                ArgoCD["Argo CD Server (EC2 Management)"]:::public
             end
 
             %% Private Subnets
-            subgraph Private_Subnets ["Private Subnets"]
+            subgraph Private_Subnets ["Private Subnets (Multi-AZ)"]
                 %% K3s Dev
-                subgraph K3s_Dev ["Single-node K3s (Dev) Cluster"]
-                    K3s_Pods["App Pods & Fluent Bit"]:::private
+                subgraph K3s_Dev ["Single-node K3s (Dev Cluster)"]
+                    K3s_Pods["Dev Pods & Fluent Bit"]:::private
                 end
 
                 %% EKS Prod
-                subgraph EKS_Prod ["AWS EKS Cluster (Prod)"]
-                    Ingress["Ingress"]:::private
-                    Service["Service"]:::private
+                subgraph EKS_Prod ["AWS EKS Cluster (Production)"]
+                    Ingress["EKS Ingress"]:::private
+                    Service["K8s Service"]:::private
                     
-                    subgraph Managed_Node_Group ["Managed Node Group"]
-                        Worker1["Worker Node 1<br>(App Pods, Fluent Bit)"]:::private
-                        Dots["..."]:::private
+                    subgraph Managed_Node_Group ["EKS Managed Node Group (Spot Instances)"]
+                        Worker1["Worker Node 1 (App Pods, Fluent Bit)"]:::private
                         WorkerN["Worker Node N"]:::private
                     end
                     
@@ -70,25 +58,24 @@ graph LR
                 end
 
                 %% VPC Endpoints
-                VPCEndpoint["VPC Endpoint (PrivateLink)"]:::public
+                VPCEndpoint["VPC PrivateLink Endpoints"]:::public
             end
         end
 
         %% Regional Services
         Secrets["AWS Secrets Manager"]:::aws
-        OpenSearch["AWS OpenSearch Service<br>(OpenSearch Dashboards)"]:::aws
+        OpenSearch["AWS OpenSearch Service<br>(OpenSearch Dashboards / Kibana)"]:::aws
     end
 
     %% External Controls & GitOps
-    GitHub -->|GitOps Pull| ArgoCD
-    Admin -->|Secure Admin Tunnel| Tailscale
-    Tailscale -.->|Manage UI/SSH| ArgoCD
-    Tailscale -.->|Manage API/SSH| K3s_Dev
-    Tailscale -.->|Manage Kibana Dashboards| OpenSearch
+    GitHub -->|Terraform Plan/Apply| AWS_Cloud
+    Admin -->|Secure WireGuard Tunnel| Tailscale
+    Tailscale -.->|Private Access (SSH/Web)| ArgoCD
+    Tailscale -.->|K8s API Access| K3s_Dev
+    Tailscale -.->|Kibana Logs Access| OpenSearch
 
-    %% User Inbound Data Path (Blue)
-    style User fill:#BBDEFB,stroke:#1565C0
-    User -->|HTTP/HTTPS Port 80/443| IGW
+    %% User Inbound Data Path (Public)
+    User -->|HTTP/HTTPS (Port 80/443)| IGW
     IGW --> ALB
     ALB --> Ingress
     Ingress --> Service
@@ -96,193 +83,133 @@ graph LR
     Service --> WorkerN
 
     %% Outbound Egress Traffic (NAT Gateway)
-    K3s_Pods --> NAT
-    Worker1 --> NAT
-    WorkerN --> NAT
+    K3s_Pods & Worker1 & WorkerN --> NAT
     NAT --> IGW
-    IGW -->|Outbound Internet Access| Internet["Public Package Repositories"]:::git
-
-    %% GitOps Sync (Dashed)
-    ArgoCD -.->|Sync Dev Manifests| K3s_Dev
-    ArgoCD -.->|Sync Prod Manifests| EKS_Control
-    EKS_Control -.->|Manage Workloads| Managed_Node_Group
+    IGW -->|Outbound Egress| Internet["Public Package Registries (NPM, Docker, etc.)"]:::git
 
     %% AWS Load Balancer Controller Loop
-    Ingress -.->|Watched by| LBC
-    LBC -.->|Provision & Update| ALB
+    Ingress -.->|Manages| LBC
+    LBC -.->|Configures| ALB
 
-    %% VPC Endpoints & Regional Services
+    %% Private Link Access
     K3s_Pods & Worker1 & WorkerN --> VPCEndpoint
     VPCEndpoint --> Secrets
     VPCEndpoint --> OpenSearch
 ```
 
-```text
-+---------------------------------------------------------------------------------------------------+
-|                                 AWS CLOUD (ap-southeast-1 Singapore)                              |
-|                                                                                                   |
-|  +---------------------------------------------------------------------------------------------+  |
-|  |                                  AWS VPC (10.0.0.0/16)                                     |  |
-|  |                                                                                             |  |
-|  |  [Internet Gateway] ◄───► [NAT Gateway]                                                     |  |
-|  |                                                                                             |  |
-|  |  +---------------------------+   +---------------------------+   +-----------------------+  |  |
-|  |  | DEV SUBNET (10.0.1.0/24)  |   | PROD SUBNET 1 (10.0.2.0)  |   | PROD SUBNET 2 (10.0.3)|  |  |
-|  |  | [AZ: ap-southeast-1a]     |   | [AZ: ap-southeast-1a]     |   | [AZ: ap-southeast-1b] |  |  |
-|  |  |                           |   |                           |   |                       |  |  |
-|  |  |  [argo_server (EC2)]      |   |  [EKS Worker Node 1]      |   |  [EKS Worker Node 2]  |  |  |
-|  |  |  k3s + Argo CD (GitOps)   |   |  Spot t3.medium           |   |  Spot t3a.medium      |  |  |
-|  |  |  IP: 10.0.1.10            |   |                           |   |                       |  |  |
-|  |  |                           |   |  [OpenSearch Data Node 1] |   | [OpenSearch Node 2]   |  |  |
-|  |  |  [k3s_dev (EC2)]          |   |  t3.medium.search         |   | t3.medium.search      |  |  |
-|  |  |  Single Node K3s          |   +---------------------------+   +-----------------------+  |  |
-|  |  |  IP: 10.0.1.12            |                                                              |  |
-|  |  +---------------------------+   +-------------------------------------------------------+  |  |
-|  |                                  | PROD SUBNET 3 (10.0.4.0/24 - AZ: ap-southeast-1c)     |  |  |
-|  |                                  |  [EKS Worker Node 3] (Spot t2.medium)                 |  |  |
-|  |                                  +-------------------------------------------------------+  |  |
-|  |                                                                                             |  |
-|  |  +---------------------------------------------------------------------------------------+  |  |
-|  |  |                      AWS EKS PRODUCTION CLUSTER (v1.31)                              |  |  |
-|  |  |  [AWS Managed Control Plane] ◄──► [EKS Worker Nodes (App Pods & Fluent Bit)]          |  |  |
-|  |  +---------------------------------------------------------------------------------------+  |  |
-|  |                                                                                             |  |
-|  |  +---------------------------------------------------------------------------------------+  |  |
-|  |  |                      VPC ENDPOINTS (AWS PrivateLink)                                  |  |  |
-|  |  |  [Secrets Manager Endpoint]                 [OpenSearch VPC Endpoint]                 |  |  |
-|  |  +---------------------------------------------------------------------------------------+  |  |
-|  |                                                                                             |  |
-|  |  +----------------------------+             +--------------------------------------------+  |  |
-|  |  |   AWS SECRETS MANAGER      |             |       AWS OPENSEARCH SERVICE (v2.11)       |  |  |
-|  |  |   Keys: tikto/dev & prod   |             |       Private VPC Endpoint (HTTPS: 443)    |  |  |
-|  |  +----------------------------+             +--------------------------------------------+  |  |
-|  +---------------------------------------------------------------------------------------------+  |
-+---------------------------------------------------------------------------------------------------+
-```
+---
 
+## 🚀 Key Architectural Capabilities
 
-| Environment | Component / Resource | AZ | Private IP / Subnet | Type / Engine | Disk / Nodes | Public / Admin Ingress |
-|---|---|---|---|---|---|---|
-| Management | `argo_server` | `ap-southeast-1a` | `10.0.1.10` | EC2 (`t3.small`) / k3s + Argo CD | 20 GB EBS | HTTPS `443` (Restricted via Tailscale VPN) |
-| Development | `k3s_dev` | `ap-southeast-1a` | `10.0.1.12` | EC2 (`t3.small`) / Single-node k3s | 20 GB EBS | TCP `30080`, `30443` (Dev NodePort) |
-| Production | `eks_prod` | Multi-AZ (1a, 1b, 1c) | `10.0.2.0/24`, `10.0.3.0/24`, `10.0.4.0/24` | AWS EKS Managed Node Group (v1.31) | 3 Spot Nodes (`t3.medium`, `t3a.medium`) | Managed AWS Application LoadBalancer (ALB) |
-| Production Logs | `opensearch_prod` | Multi-AZ (1a, 1b) | `10.0.2.0/24`, `10.0.3.0/24` | AWS OpenSearch Service (`v2.11`) | 2 Data Nodes (60 GB Total gp3 EBS) | HTTPS `443` (Restricted via VPC Endpoint) |
-| Secrets | AWS Secrets Manager | Global VPC | - | `tikto/dev` & `tikto/prod` | Injected from local `.env` | VPC Endpoint Private Access |
+*   **Production High Availability**: Multi-AZ deployment spanning `ap-southeast-1a`, `ap-southeast-1b`, and `ap-southeast-1c`.
+*   **Mixed Instance EKS Auto-Scaling**: The production EKS cluster is backed by a mixed Spot/On-Demand instance group (`t3.medium`, `t3a.medium`, `t2.medium`), cutting cluster compute costs by up to **70%**.
+*   **Centralized VPC Logging**: Application logs are ingested via Fluent Bit on EKS nodes and pushed over private VPC links to a Multi-AZ **AWS OpenSearch** cluster.
+*   **Zero-Trust Admin Gateway**: Public ingress is strictly limited to application routes. All administrative entry (Argo CD Dashboard, Kubernetes APIs, and Kibana logs) is routed through a secure **Tailscale VPN** subnet gateway.
+*   **Automated Secrets Pipeline**: Sensitive keys are defined as Terraform variables and automatically populated in AWS Secrets Manager straight from GitHub Secrets during CI/CD execution, avoiding local `.env` parsing inside Terraform.
 
-## Dual Access Flow Architecture
+---
 
-The system enforces strict network segregation between **End Users (Public Traffic)** and **DevOps / Admins (Management Traffic)**:
+## 📂 Repository Structure
 
-```text
-[ END USERS / PUBLIC TRAFFIC ]
-Internet ──────► AWS Application Load Balancer (ALB) ──────► EKS Ingress / Service ──────► TikTo App Pods (Port 80)
-
-[ DEVOPS / ADMIN MANAGEMENT TRAFFIC ]
-DevOps Admin ──► Tailscale VPN ──► Private VPC Network (10.0.0.0/16)
-                                     ├──► Dedicated Argo CD Server (Port 80/443 Web UI & Port 22 SSH)
-                                     ├──► K3s Dev Kubernetes API (Port 6443) & SSH
-                                     ├──► EKS Managed Control Plane API (Port 443)
-                                     └──► OpenSearch Dashboards / Kibana (Port 443)
-```
-
-| Traffic Category | Target Service | Entry Point / Access Method | Authentication & Security Control |
-|---|---|---|---|
-| **Public User Traffic** | `tikto-prod` Web / API App | Public Internet Gateway ➔ AWS ALB | Public TLS/SSL, WAF, Restricted to App Port `80` |
-| **DevOps Admin Traffic** | EKS Cluster Management | Tailscale VPN ➔ EKS Control Plane API | AWS IAM Role Authenticated, RBAC Kubernetes Permissions |
-| **DevOps Admin Traffic** | Argo CD GitOps Dashboard | Tailscale VPN ➔ `https://10.0.1.10` | Argo CD Admin Authentication, Tailscale Encrypted tunnel |
-| **DevOps Admin Traffic** | OpenSearch / Kibana Logs | Tailscale VPN ➔ `https://<OPENSEARCH_VPC_ENDPOINT>` | Security Group restricting access to VPC / VPN CIDR |
-| **VPN Access Gateway** | Entire AWS VPC (`10.0.0.0/16`) | Tailscale Subnet Router on `argo_server` | Encrypted P2P WireGuard Tunnel, Tailscale Auth Key |
-
-
-
-
-## Network Design
-
-| Resource | Value |
-|---|---|
-| AWS Region | `ap-southeast-1` (Singapore) |
-| VPC CIDR | `10.0.0.0/16` |
-| Dev subnet | `10.0.1.0/24` in `ap-southeast-1a` |
-| Prod Subnet 1 | `10.0.2.0/24` in `ap-southeast-1a` |
-| Prod Subnet 2 | `10.0.3.0/24` in `ap-southeast-1b` |
-| Prod Subnet 3 | `10.0.4.0/24` in `ap-southeast-1c` |
-| Internet Access | Internet Gateway and public route table |
-
-## Repository Structure
+The directory is modularized to split cloud resource definitions from configuration scripts:
 
 ```text
 IaC/
-├── main.tf                 # Main infrastructure orchestration
-├── variables.tf            # Global input variable definitions
-├── outputs.tf              # Infrastructure output definitions
-├── terraform.tfvars        # Infrastructure environment configuration
-├── secrets_and_iam.tf      # Local .env secret parser, Secrets Manager, and EKS IAM policies
-├── .env.example            # Sample environment variables template
+├── main.tf                 # Orchestration of all infrastructure modules
+├── variables.tf            # Input variable declarations
+├── outputs.tf              # Infrastructure output declarations
+├── terraform.tfvars        # Global configuration parameters
+├── secrets_and_iam.tf      # AWS Secrets Manager & EKS worker node IAM policies
+├── .env.example            # Template for local environment variables
 ├── module/
-│   ├── vpc/                # Reusable VPC module
-│   ├── ec2/                # Reusable EC2 module (Argo CD & Dev k3s)
-│   ├── eks/                # Reusable AWS EKS Managed NodeGroup module
-│   ├── opensearch/         # Reusable AWS OpenSearch Managed Cluster module
-│   └── secrets_manager/    # Reusable AWS Secrets Manager module
+│   ├── vpc/                # Multi-AZ VPC subnet networking
+│   ├── ec2/                # Standalone EC2 instances (Argo CD & K3s Dev)
+│   ├── eks/                # High-Availability EKS Cluster & Spot Node Group
+│   ├── opensearch/         # Managed OpenSearch logging cluster
+│   └── secrets_manager/    # Reusable AWS Secrets Manager secret store
 └── scripts/
-    ├── common/             # Base OS and Docker initialization scripts
-    ├── k3s/                # k3s installation and Argo CD setup scripts
-    └── nodes/              # Standalone EC2 node setup wrappers
-        ├── README.md
-        ├── argo_server/
-        └── k3s_dev/
+    ├── common/             # Base OS installation packages
+    ├── k3s/                # Local k3s and Argo CD configuration
+    └── nodes/              # Node-specific setup scripts (tracked in Git)
+        ├── argo_server/    # Argo CD management server startup script
+        └── k3s_dev/        # K3s dev server startup script
 ```
 
-## Security and Operations
+---
 
-- **Root EBS Volumes**: Encrypted using AWS managed keys (`gp3`).
-- **OpenSearch Security**:
-  - Enforces HTTPS (TLS 1.2 minimum).
-  - Node-to-node encryption and encryption-at-rest enabled.
-  - Security Group restricts port `443` access exclusively to the internal VPC CIDR (`10.0.0.0/16`).
-- **IAM Policies (Least Privilege)**:
-  - `secrets_manager_read`: Grants `secretsmanager:GetSecretValue` on `tikto/*` secrets to EKS worker node roles for External Secrets Operator.
-  - `opensearch_ingest`: Grants `es:ESHttpPost` and `es:ESHttpPut` to EKS worker node roles for Fluent Bit log ingestion without storing credentials in pods.
-- **Secret Management**:
-  - Local `.env` file (if present) is parsed at provision time and synced to AWS Secrets Manager keys (`tikto/dev` and `tikto/prod`).
-  - `.env` files are ignored in `.gitignore` to prevent secret leaks.
+## 🔒 Security & Compliance Controls
 
-## Deployment Instructions
+The infrastructure is hardened against standard AWS vulnerabilities and checked against **Checkov** security policies:
 
-### 1. Configure Local Secrets (Optional)
-Copy the template and populate runtime variables:
+*   **EBS Encryption**: All root and data volumes are encrypted at rest with AWS-managed keys.
+*   **No Hardcoded Secrets**: Secrets are injected dynamically using environment variables (`TF_VAR_<name>`) in GitHub Actions.
+*   **IMDSv2 Enforced**: Metadata options on EC2 instances require tokens (`http_tokens = "required"`) with a response hop limit of 1 to block SSRF attacks.
+*   **Least Privilege IAM**:
+    *   `secrets_manager_read`: Restricts Secret access strictly to EKS worker node roles (for the External Secrets Operator).
+    *   `opensearch_ingest`: Restricts Log Ingestion HTTP actions strictly to Fluent Bit on EKS nodes.
+
+---
+
+## 🛠️ Deploying the Infrastructure
+
+### 1. Prerequisites
+Before deploying, ensure you have:
+1.  An **AWS S3 Bucket** named `bucket-project-devops-tfstate` created in `ap-southeast-1` to act as the Terraform backend.
+2.  An **AWS EC2 Key Pair** named `devops-project` generated in `ap-southeast-1` to manage access keys for standalone nodes.
+3.  **GitHub Environment Secrets** configured on your repository for the `production` environment:
+
+| GitHub Secret Key | Description |
+|---|---|
+| `DATABASE_URL` | Main application connection string |
+| `CALENDAR_DATABASE_URL` | Calendar service connection string |
+| `PROFILE_DATABASE_URL` | Profile service connection string |
+| `TASKS_DATABASE_URL` | Tasks service connection string |
+| `TIKTO_CALENDAR_API_URL` | Calendar service API endpoint |
+| `TIKTO_DASHBOARD_API_URL` | Frontend Dashboard API endpoint |
+| `TIKTO_PROFILE_API_URL` | Profile service API endpoint |
+| `TIKTO_TASKS_API_URL` | Tasks service API endpoint |
+| `NEXT_PUBLIC_APP_URL` | Public application URL |
+| `SONAR_TOKEN` | SonarQube code scan token |
+| `GITOPS_TOKEN` | GitOps repository PAT token |
+| `GITOPS_USERNAME` | GitOps GitHub Username |
+| `TOKEN_ENCRYPTION_KEY` | JWT/Cookie encryption key |
+| `TAILSCALE_AUTHKEY` | VPN Node authentication key |
+
+### 2. Execution (Local or CI/CD)
+To provision the infrastructure manually from your local command line, export the variables and run:
+
 ```bash
-cp .env.example .env
-```
+# Export your AWS Credentials
+export AWS_ACCESS_KEY_ID="your-access-key-id"
+export AWS_SECRET_ACCESS_KEY="your-secret-access-key"
+export AWS_DEFAULT_REGION="ap-southeast-1"
 
-### 2. Provision Infrastructure
-```bash
+# Export the variables (Example)
+export TF_VAR_database_url="postgresql://..."
+export TF_VAR_tailscale_authkey="tskey-auth-..."
+
+# Run Terraform commands
 terraform init
-terraform plan
-terraform apply
+terraform plan -out=tfplan
+terraform apply tfplan
 ```
 
-### 3. Access EKS Cluster
-Once Terraform completes, update your local `kubeconfig` to connect to the EKS Production cluster:
+### 3. Connect to EKS Cluster
+Once provisioning completes, update your local Kubeconfig context:
 ```bash
 aws eks update-kubeconfig --region ap-southeast-1 --name tikto-prod-eks
-kubectl get nodes
+kubectl get nodes -o wide
 ```
 
-## Outputs
+---
 
-| Output | Description |
-|---|---|
-| `vpc_id` | AWS VPC ID |
-| `argo_server_public_ip` | Public IP for dedicated Argo CD Management Server |
-| `dev_k3s_public_ip` | Public IP for Dev K3s EC2 Node |
-| `prod_eks_cluster_name` | Production EKS Cluster Name (`tikto-prod-eks`) |
-| `prod_eks_cluster_endpoint` | Production EKS Cluster API Endpoint |
-| `opensearch_domain_endpoint` | Private VPC Endpoint URL for OpenSearch |
-| `opensearch_kibana_endpoint` | OpenSearch Dashboards Web Endpoint |
+## 📊 Infrastructure Summary Outputs
 
-## Notes
-
-- Terraform version: `>= 1.10`
-- AWS region: `ap-southeast-1`
-- Project Name: `tikto`
+| Output Name | Description | Access Scope |
+|---|---|---|
+| `vpc_id` | AWS Network ID | Internal VPC |
+| `argo_server_public_ip` | Public IP for dedicated Argo CD Server | Managed (VPN required) |
+| `dev_k3s_public_ip` | Public IP for Dev K3s EC2 Node | Managed (VPN required) |
+| `prod_eks_cluster_name` | Name of EKS production cluster (`tikto-prod-eks`) | K8s API Context |
+| `opensearch_domain_endpoint`| Private domain VPC endpoint for OpenSearch logs | Internal VPC |
+| `opensearch_kibana_endpoint`| Kibana dashboard web interface URL | VPN Connected Admins |
