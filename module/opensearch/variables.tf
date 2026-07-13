@@ -53,3 +53,9 @@ variable "volume_size" {
   type        = number
   default     = 30
 }
+
+variable "create_service_linked_role" {
+  description = "Whether to create the service-linked role for OpenSearch"
+  type        = bool
+  default     = false
+}
