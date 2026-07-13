@@ -50,6 +50,7 @@ jobs:
       TF_VAR_gitops_token: ${{ secrets.GITOPS_TOKEN }}
       TF_VAR_gitops_username: ${{ secrets.GITOPS_USERNAME }}
       TF_VAR_token_encryption_key: ${{ secrets.TOKEN_ENCRYPTION_KEY }}
+      TF_VAR_tailscale_authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
 
     defaults:
       run:

@@ -276,4 +276,11 @@ variable "token_encryption_key" {
   default     = null
 }
 
+variable "tailscale_authkey" {
+  description = "Tailscale Auth Key"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
 

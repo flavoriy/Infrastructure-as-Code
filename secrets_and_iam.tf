@@ -30,6 +30,7 @@ locals {
       GITOPS_TOKEN                         = var.gitops_token
       GITOPS_USERNAME                      = var.gitops_username
       TOKEN_ENCRYPTION_KEY                 = var.token_encryption_key
+      TAILSCALE_AUTHKEY                    = var.tailscale_authkey
     } : k => v if v != null
   }
 
