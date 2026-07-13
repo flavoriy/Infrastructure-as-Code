@@ -39,9 +39,9 @@ resource "aws_eip" "eip" {
 
 
 resource "aws_instance" "ec2" {
-  # checkov:skip=CKV_AWS_88:Public IP is required for public access to management and dev services in this lab
-  # checkov:skip=CKV_AWS_126:Detailed monitoring is disabled to keep costs within lab limits
-  # checkov:skip=CKV2_AWS_41:IAM role not required for this instance
+  #checkov:skip=CKV_AWS_88:Public IP is required for public access to management and dev services in this lab
+  #checkov:skip=CKV_AWS_126:Detailed monitoring is disabled to keep costs within lab limits
+  #checkov:skip=CKV2_AWS_41:IAM role not required for this instance
 
   ami                         = var.aws_ami_id
   instance_type               = var.aws_instance_type

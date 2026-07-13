@@ -38,7 +38,7 @@ resource "aws_subnet" "prod" {
 }
 
 resource "aws_subnet" "public" {
-  # checkov:skip=CKV_AWS_130:Public subnets must map public IPs on launch by design to allow public resources to be reachable
+  #checkov:skip=CKV_AWS_130:Public subnets must map public IPs on launch by design to allow public resources to be reachable
   count                   = length(var.public_subnet_cidrs)
   vpc_id                  = aws_vpc.vpc.id
   cidr_block              = var.public_subnet_cidrs[count.index]
