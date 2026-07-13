@@ -38,9 +38,11 @@ resource "aws_eip" "eip" {
 }
 
 
-#checkov:skip=CKV2_AWS_41:IAM role not required for this DevOps lab environment
-#checkov:skip=CKV_AWS_126:Detailed monitoring is disabled by default to keep this lab within a fixed AWS credit budget
 resource "aws_instance" "ec2" {
+  # checkov:skip=CKV_AWS_88:Public IP is required for public access to management and dev services in this lab
+  # checkov:skip=CKV_AWS_126:Detailed monitoring is disabled to keep costs within lab limits
+  # checkov:skip=CKV2_AWS_41:IAM role not required for this instance
+
   ami                         = var.aws_ami_id
   instance_type               = var.aws_instance_type
   key_name                    = var.key_name
@@ -49,6 +51,7 @@ resource "aws_instance" "ec2" {
   private_ip                  = var.private_ip
   associate_public_ip_address = var.associate_eip ? false : true
   monitoring                  = var.enable_detailed_monitoring
+  ebs_optimized               = true
 
   metadata_options {
     http_endpoint               = "enabled"

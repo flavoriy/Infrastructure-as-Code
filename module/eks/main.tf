@@ -28,6 +28,11 @@ resource "aws_iam_role_policy_attachment" "cluster_AmazonEKSVPCResourceControlle
 
 # EKS Cluster
 resource "aws_eks_cluster" "eks" {
+  # checkov:skip=CKV_AWS_39:Public endpoint access is required to access EKS cluster without a bastion/VPN in this lab
+  # checkov:skip=CKV_AWS_38:Public endpoint CIDR restriction is omitted for simplicity in this lab
+  # checkov:skip=CKV_AWS_58:Secrets encryption with KMS is disabled to avoid KMS key charges in this lab
+  # checkov:skip=CKV_AWS_37:Control plane logging is disabled by default to save CloudWatch ingestion costs
+
   name     = "${var.project_name}-${var.environment}-eks"
   role_arn = aws_iam_role.cluster_role.arn
   version  = var.cluster_version

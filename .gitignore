@@ -10,8 +10,6 @@ override.tf.json
 *_override.tf.
 .terraform.lock.hcl
 
-# Node-specific setup scripts
-scripts/nodes/
 
 # Local secret environment files
 .env
