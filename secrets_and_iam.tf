@@ -1,12 +1,6 @@
 locals {
   # Default fallback secrets if variables are missing or incomplete
-  default_dev_secrets = {
-    DATABASE_URL                         = "postgresql://user:password@host:5432/tikto_dev"
-    TIKTO_INTERNAL_API_KEY               = "dev-internal-api-key-secret"
-    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "dev-supabase-key"
-  }
-
-  default_prod_secrets = {
+  default_secrets = {
     DATABASE_URL                         = "postgresql://user:password@host:5432/tikto_prod"
     TIKTO_INTERNAL_API_KEY               = "prod-internal-api-key-secret"
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "prod-supabase-key"
@@ -34,28 +28,17 @@ locals {
     } : k => v if v != null
   }
 
-  final_dev_secrets  = merge(local.default_dev_secrets, local.var_secrets)
-  final_prod_secrets = merge(local.default_prod_secrets, local.var_secrets)
+  final_secrets = merge(local.default_secrets, local.var_secrets)
 }
 
-# Reusable Secrets Manager Module for Development Environment
-module "secrets_dev" {
-  source        = "./module/secrets_manager"
-  project_name  = var.project_name
-  environment   = "dev"
-  secret_name   = var.secret_key_dev
-  description   = "Application runtime secrets for TikTo Development environment"
-  secret_values = local.final_dev_secrets
-}
-
-# Reusable Secrets Manager Module for Production Environment
-module "secrets_prod" {
+# Reusable Secrets Manager Module
+module "secrets" {
   source        = "./module/secrets_manager"
   project_name  = var.project_name
   environment   = "prod"
-  secret_name   = var.secret_key_prod
-  description   = "Application runtime secrets for TikTo Production environment"
-  secret_values = local.final_prod_secrets
+  secret_name   = var.secret_name
+  description   = "Application runtime secrets for TikTo"
+  secret_values = local.final_secrets
 }
 
 # IAM Policy: Allow reading Secrets Manager secrets
@@ -73,10 +56,8 @@ resource "aws_iam_policy" "secrets_manager_read" {
           "secretsmanager:DescribeSecret"
         ]
         Resource = [
-          module.secrets_dev.secret_arn,
-          module.secrets_prod.secret_arn,
-          "${module.secrets_dev.secret_arn}-*",
-          "${module.secrets_prod.secret_arn}-*"
+          module.secrets.secret_arn,
+          "${module.secrets.secret_arn}-*"
         ]
       }
     ]

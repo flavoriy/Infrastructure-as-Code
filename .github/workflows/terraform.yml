@@ -71,6 +71,7 @@ jobs:
       run: |
         aws secretsmanager delete-secret --secret-id tikto/dev --force-delete-without-recovery --region ${{ secrets.AWS_REGION }} || true
         aws secretsmanager delete-secret --secret-id tikto/prod --force-delete-without-recovery --region ${{ secrets.AWS_REGION }} || true
+        aws secretsmanager delete-secret --secret-id tikto/secrets --force-delete-without-recovery --region ${{ secrets.AWS_REGION }} || true
 
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3

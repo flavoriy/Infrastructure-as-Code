@@ -164,16 +164,10 @@ variable "opensearch_volume_type" {
 }
 
 # AWS Secrets Manager Variables
-variable "secret_key_dev" {
-  description = "AWS Secrets Manager key name for development environment"
+variable "secret_name" {
+  description = "AWS Secrets Manager key name for the project"
   type        = string
-  default     = "tikto/dev"
-}
-
-variable "secret_key_prod" {
-  description = "AWS Secrets Manager key name for production environment"
-  type        = string
-  default     = "tikto/prod"
+  default     = "tikto/secrets"
 }
 
 # Application Secrets
