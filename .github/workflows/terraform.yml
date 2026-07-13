@@ -67,6 +67,11 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ secrets.AWS_REGION }}
 
+    - name: Clean up deleted secrets (if any)
+      run: |
+        aws secretsmanager delete-secret --secret-id tikto/dev --force-delete-without-recovery --region ${{ secrets.AWS_REGION }} || true
+        aws secretsmanager delete-secret --secret-id tikto/prod --force-delete-without-recovery --region ${{ secrets.AWS_REGION }} || true
+
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
 
