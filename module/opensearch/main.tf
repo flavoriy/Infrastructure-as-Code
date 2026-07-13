@@ -26,6 +26,11 @@ resource "aws_security_group" "opensearch" {
   }
 }
 
+# Create the service-linked role for OpenSearch
+resource "aws_iam_service_linked_role" "opensearch" {
+  aws_service_name = "opensearchservice.amazonaws.com"
+}
+
 # AWS OpenSearch Service Domain
 resource "aws_opensearch_domain" "opensearch" {
   #checkov:skip=CKV_AWS_318:Three dedicated master nodes is omitted to save costs in this lab environment
@@ -79,4 +84,6 @@ resource "aws_opensearch_domain" "opensearch" {
     Name        = "${var.project_name}-${var.environment}-opensearch"
     Environment = var.environment
   }
+
+  depends_on = [aws_iam_service_linked_role.opensearch]
 }

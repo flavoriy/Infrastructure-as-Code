@@ -4,7 +4,7 @@ resource "aws_secretsmanager_secret" "this" {
 
   name                    = var.secret_name
   description             = var.description
-  recovery_window_in_days = var.environment == "dev" ? 0 : 7
+  recovery_window_in_days = 0
 
   tags = {
     Name        = "${var.project_name}-${var.environment}-secret"

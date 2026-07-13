@@ -38,6 +38,6 @@ opensearch_volume_size    = 30
 opensearch_volume_type    = "gp3"
 
 # AWS Secrets Manager Settings
-secret_key_dev  = "tikto/dev"
-secret_key_prod = "tikto/prod"
+secret_key_dev  = "tikto/dev-v2"
+secret_key_prod = "tikto/prod-v2"
 
