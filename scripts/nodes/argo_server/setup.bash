@@ -81,7 +81,7 @@ install_k3s_argo() {
 install_argocd() {
   echo "Installing Argo CD Server..."
   sudo k3s kubectl create namespace argocd --dry-run=client -o yaml | sudo k3s kubectl apply -f -
-  sudo k3s kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+  sudo k3s kubectl apply --server-side -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
   sudo k3s kubectl -n argocd rollout status deploy/argocd-server --timeout=300s || true
 
   echo "Applying TikTo Argo CD project and applications..."
