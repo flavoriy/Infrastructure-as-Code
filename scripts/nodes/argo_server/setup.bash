@@ -84,8 +84,7 @@ install_argocd() {
   sudo k3s kubectl apply --server-side -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
   sudo k3s kubectl -n argocd rollout status deploy/argocd-server --timeout=300s || true
 
-  echo "Applying TikTo Argo CD project and applications..."
-  sudo k3s kubectl apply -f https://raw.githubusercontent.com/Flavoriy/gitops-manifest/main/argocd/projects/tikto.yaml || true
+  echo "Applying TikTo Argo CD applications..."
   sudo k3s kubectl apply -f https://raw.githubusercontent.com/Flavoriy/gitops-manifest/main/argocd/applications/tikto-dev.yaml || true
   sudo k3s kubectl apply -f https://raw.githubusercontent.com/Flavoriy/gitops-manifest/main/argocd/applications/tikto-prod.yaml || true
 }
