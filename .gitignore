@@ -15,4 +15,7 @@ override.tf.json
 .env
 *.env
 
+# Binaries
+kubectl.exe
+
 

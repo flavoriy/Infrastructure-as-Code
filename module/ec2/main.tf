@@ -38,10 +38,19 @@ resource "aws_eip" "eip" {
 }
 
 
+module "ssm_iam" {
+  source                  = "../iam"
+  project_name            = var.project_name
+  role_name               = "${var.project_name}-${var.instance_name}-ssm-role"
+  assume_role_service     = "ec2.amazonaws.com"
+  managed_policy_arns     = ["arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"]
+  create_instance_profile = true
+}
+
+
 resource "aws_instance" "ec2" {
   #checkov:skip=CKV_AWS_88:Public IP is required for public access to management and dev services in this lab
   #checkov:skip=CKV_AWS_126:Detailed monitoring is disabled to keep costs within lab limits
-  #checkov:skip=CKV2_AWS_41:IAM role not required for this instance
 
   ami                         = var.aws_ami_id
   instance_type               = var.aws_instance_type
@@ -50,6 +59,7 @@ resource "aws_instance" "ec2" {
   subnet_id                   = var.subnet_id
   private_ip                  = var.private_ip
   associate_public_ip_address = var.associate_eip ? false : true
+  iam_instance_profile        = module.ssm_iam.instance_profile_name
   monitoring                  = var.enable_detailed_monitoring
   ebs_optimized               = true
 
