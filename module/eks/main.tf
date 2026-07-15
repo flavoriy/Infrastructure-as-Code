@@ -48,6 +48,31 @@ module "node_iam" {
   ]
 }
 
+resource "aws_launch_template" "eks_node_lt" {
+  name_prefix   = "${var.project_name}-${var.environment}-node-lt-"
+  
+  block_device_mappings {
+    device_name = "/dev/xvda"
+    
+    ebs {
+      volume_size           = var.disk_size
+      volume_type           = "gp3"
+      encrypted             = true
+      delete_on_termination = true
+    }
+  }
+
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_put_response_hop_limit = 2
+    http_tokens                 = "required"
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
 # Managed Node Group using EC2 Spot Instances (Multi-AZ HA & 70% Cost Savings)
 resource "aws_eks_node_group" "nodes" {
   cluster_name    = aws_eks_cluster.eks.name
@@ -57,7 +82,11 @@ resource "aws_eks_node_group" "nodes" {
 
   capacity_type  = "SPOT"
   instance_types = var.node_instance_types
-  disk_size      = var.disk_size
+  
+  launch_template {
+    id      = aws_launch_template.eks_node_lt.id
+    version = aws_launch_template.eks_node_lt.latest_version
+  }
 
   scaling_config {
     desired_size = var.desired_size
