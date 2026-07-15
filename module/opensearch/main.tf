@@ -97,12 +97,12 @@ resource "aws_opensearch_domain_policy" "main" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect    = "Allow"
+        Effect = "Allow"
         Principal = {
           AWS = "*"
         }
-        Action    = "es:*"
-        Resource  = "${aws_opensearch_domain.opensearch.arn}/*"
+        Action   = "es:*"
+        Resource = "${aws_opensearch_domain.opensearch.arn}/*"
       }
     ]
   })
