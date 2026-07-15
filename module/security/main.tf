@@ -57,3 +57,10 @@ resource "aws_iam_role_policy_attachment" "eks_node_opensearch" {
   policy_arn = aws_iam_policy.opensearch_ingest.arn
   role       = var.eks_node_role_name
 }
+
+# Attach Secrets Manager Policy to K3s Node Role
+resource "aws_iam_role_policy_attachment" "k3s_node_secrets_manager" {
+  count      = var.k3s_node_role_name != "" ? 1 : 0
+  policy_arn = aws_iam_policy.secrets_manager_read.arn
+  role       = var.k3s_node_role_name
+}

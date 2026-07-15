@@ -17,3 +17,9 @@ variable "eks_node_role_name" {
   description = "Name of the EKS node group IAM role to attach policies to"
   type        = string
 }
+
+variable "k3s_node_role_name" {
+  description = "Name of the K3s dev instance IAM role to attach secrets manager read policy to"
+  type        = string
+  default     = ""
+}

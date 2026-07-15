@@ -188,6 +188,7 @@ module "security" {
   secret_arn            = module.secrets.secret_arn
   opensearch_domain_arn = module.opensearch_prod.domain_arn
   eks_node_role_name    = module.eks_prod.node_role_name
+  k3s_node_role_name    = "tikto-k3s_dev-ssm-role"
 }
 
 
