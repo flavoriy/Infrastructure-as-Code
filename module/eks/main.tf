@@ -49,11 +49,11 @@ module "node_iam" {
 }
 
 resource "aws_launch_template" "eks_node_lt" {
-  name_prefix   = "${var.project_name}-${var.environment}-node-lt-"
-  
+  name_prefix = "${var.project_name}-${var.environment}-node-lt-"
+
   block_device_mappings {
     device_name = "/dev/xvda"
-    
+
     ebs {
       volume_size           = var.disk_size
       volume_type           = "gp3"
@@ -82,7 +82,7 @@ resource "aws_eks_node_group" "nodes" {
 
   capacity_type  = "SPOT"
   instance_types = var.node_instance_types
-  
+
   launch_template {
     id      = aws_launch_template.eks_node_lt.id
     version = aws_launch_template.eks_node_lt.latest_version
