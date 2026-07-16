@@ -1,12 +1,10 @@
-# TikTo AWS Infrastructure (IaC)
+# 🛠️ TikTo AWS Infrastructure (IaC)
 
-Modular Terraform setup to deploy the AWS cloud infrastructure for the **TikTo** platform (VPC, EC2, EKS, OpenSearch, and Secrets Manager).
+This directory contains the modular Terraform configurations to provision the AWS cloud infrastructure for the **TikTo** platform, including the EKS cluster, VPC network, AWS OpenSearch logging domain, and AWS Secrets Manager.
 
 ---
 
 ## 🗺️ System Topology
-
-This diagram shows how public users access the app via the Load Balancer, and how developers connect securely to the private subnet via Tailscale VPN.
 
 ```mermaid
 graph TD
@@ -43,8 +41,6 @@ graph TD
 
 ## 📂 Project Structure
 
-Here is how the repository is organized:
-
 ```text
 .
 ├── module/                 # Reusable infrastructure modules
@@ -53,65 +49,39 @@ Here is how the repository is organized:
 │   ├── eks/                # EKS Cluster & Spot Node Group (Prod)
 │   ├── opensearch/         # OpenSearch logging cluster (Prod)
 │   └── secrets_manager/    # AWS Secrets Manager module
-├── scripts/                # Node bootstrap and initialization scripts
-│   ├── common/             # Base OS package setup
-│   ├── k3s/                # Local k3s and Argo CD configuration
-│   └── nodes/              # Node setup scripts (Argo CD & K3s Dev)
 ├── main.tf                 # Orchestration of all modules
 ├── variables.tf            # Input variable declarations
 ├── outputs.tf              # Endpoints and metadata outputs
-├── secrets_and_iam.tf      # Secrets Manager stores & IAM policy configurations
 └── terraform.tfvars        # Default configuration values
 ```
 
 ---
 
-## 🛠️ Prerequisites & GitHub Secrets
+## 🚀 How to Spin Up & Configure
 
-Before running the deployment, configure these secrets in your GitHub repository under the `production` environment:
+### 1. Set Up Environment Variables
+Create `terraform.tfvars` from `terraform.tfvars.example` and configure your credentials:
+```hcl
+aws_region          = "ap-southeast-1"
+cluster_name        = "tikto-prod-eks"
+tailscale_authkey   = "tskey-auth-..."
+```
 
-| Secret Key | Description | Example Value |
-|---|---|---|
-| `DATABASE_URL` | Application database connection string | `postgresql://postgres:MySecurePassword123!@tikto-db.rds.amazonaws.com:5432/tikto_db` |
-| `CALENDAR_DATABASE_URL` | Calendar service database connection string | `postgresql://postgres:MySecurePassword123!@calendar-db.rds.amazonaws.com:5432/calendar_db` |
-| `PROFILE_DATABASE_URL` | Profile service database connection string | `postgresql://postgres:MySecurePassword123!@profile-db.rds.amazonaws.com:5432/profile_db` |
-| `TASKS_DATABASE_URL` | Tasks service database connection string | `postgresql://postgres:MySecurePassword123!@tasks-db.rds.amazonaws.com:5432/tasks_db` |
-| `TIKTO_CALENDAR_API_URL` | Calendar service API endpoint | `https://api.calendar.tikto.example.com` |
-| `TIKTO_DASHBOARD_API_URL` | Frontend Dashboard API endpoint | `https://api.dashboard.tikto.example.com` |
-| `TIKTO_PROFILE_API_URL` | Profile service API endpoint | `https://api.profile.tikto.example.com` |
-| `TIKTO_TASKS_API_URL` | Tasks service API endpoint | `https://api.tasks.tikto.example.com` |
-| `NEXT_PUBLIC_APP_URL` | Public web application URL | `https://tikto.example.com` |
-| `SONAR_TOKEN` | SonarQube scanner token | `sqa_abcdef1234567890abcdef1234567890` |
-| `GITOPS_TOKEN` | GitHub PAT for GitOps repository | `github_pat_11ABCDEF01234567890abcdef` |
-| `GITOPS_USERNAME` | GitOps GitHub Username | `devops-admin` |
-| `TOKEN_ENCRYPTION_KEY` | JWT token encryption key | `super-secret-jwt-encryption-key-32-chars` |
-| `TAILSCALE_AUTHKEY` | Tailscale subnet router auth key | `tskey-auth-k8s-abcdef1234567890-abcdef` |
-
----
-
-## 🚀 How to Run
-
-### Deploy Locally
-To deploy from your local CLI, export your credentials and run the commands:
-
+### 2. Run Terraform Commands
+To deploy the infrastructure from your local CLI:
 ```bash
-# 1. AWS Credentials
-export AWS_ACCESS_KEY_ID="your-access-key"
-export AWS_SECRET_ACCESS_KEY="your-secret-key"
-export AWS_DEFAULT_REGION="ap-southeast-1"
-
-# 2. Export variables (e.g.)
-export TF_VAR_database_url="postgresql://..."
-export TF_VAR_tailscale_authkey="tskey-auth-..."
-
-# 3. Apply
+# Initialize Terraform
 terraform init
+
+# Generate & inspect deployment plan
 terraform plan -out=tfplan
+
+# Apply changes
 terraform apply tfplan
 ```
 
-### Connect to the EKS Cluster
-Once provisioning is done, update your local kubeconfig:
+### 3. Connect to the EKS Cluster
+Once provisioning is completed, update your local kubeconfig to connect:
 ```bash
 aws eks update-kubeconfig --region ap-southeast-1 --name tikto-prod-eks
 kubectl get nodes
@@ -119,63 +89,61 @@ kubectl get nodes
 
 ---
 
-## 💡 Key Design Notes
-*   **Cost Optimization**: Production EKS uses Spot Instances (`t3.medium`, `t3a.medium`, `t2.medium`), cutting cluster compute costs by **70%**.
-*   **Secure Access**: No public ports are exposed for administration. Argo CD, K3s APIs, and Kibana logs are only reachable after logging into the VPC via Tailscale VPN.
-*   **Encrypted Secrets**: App secrets are pushed dynamically from GitHub Secrets to AWS Secrets Manager using variables, avoiding hardcoding keys in Git.
+## 🔧 Useful Administration Commands
+
+### Install Istio Control Plane (Helm)
+```bash
+# Add Istio Helm repository
+helm repo add istio https://istio-release.storage.googleapis.com/charts
+helm repo update
+
+# Install base CRDs & Control Plane
+helm upgrade --install istio-base istio/base -n istio-system --create-namespace
+helm upgrade --install istiod istio/istiod -n istio-system --wait
+```
+
+### Install Istio Ingress Gateway (Helm)
+```bash
+# Install Ingress Gateway as NodePort for AWS ALB integration
+helm upgrade --install istio-ingress istio/gateway -n tikto-prod --set service.type=NodePort --wait
+```
 
 ---
 
-## 🕸️ Istio Service Mesh & AWS ALB Integration (Prod)
+## 🔍 Troubleshooting & Fixes
 
-For production, the traffic routing architecture utilizes **AWS ALB (Application Load Balancer)** in front of an **Istio Ingress Gateway** to achieve enterprise-grade traffic control, Canary rollouts, and internal Service Mesh security.
+### ❌ AWS ALB Ingress Gateway returns 503 (Target.NotInUse)
+* **Issue**: Public web access through the AWS Application Load Balancer (ALB) fails with a `503 Service Temporarily Unavailable` error, and the AWS Console shows target groups as `Target.NotInUse`.
+* **Cause**: The public ALB is provisioned across subnets in AZs `ap-southeast-1a` and `ap-southeast-1b`, but the EKS scheduler placed the `istio-ingress` pods on a worker node in `ap-southeast-1c`. AWS ALB Target Groups cannot route traffic to targets in AZs where the load balancer itself is disabled unless cross-zone load-balancing is configured.
+* **Solution**: Apply a node affinity patch to the `istio-ingress` deployment to restrict scheduling to the active ALB subnets (`ap-southeast-1a` and `ap-southeast-1b`):
+  ```yaml
+  spec:
+    template:
+      spec:
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+              - matchExpressions:
+                - key: topology.kubernetes.io/zone
+                  operator: In
+                  values:
+                  - ap-southeast-1a
+                  - ap-southeast-1b
+  ```
 
-### ⚓ AWS ALB Target Group Health Check
-When AWS ALB targets `istio-ingress` pods directly using `target-type: ip`, the ALB controller health check must be customized to avoid `503 Service Temporarily Unavailable` errors:
-* **The Issue**: By default, ALB queries `/` on port `80`. Since the Ingress Gateway returns `404 Not Found` when no default VirtualService matches `/`, ALB marks the targets as unhealthy.
-* **The Solution**: Route the health check to Istio Ingress Gateway's native status port `15021` on the path `/healthz/ready`.
-* **Annotations to apply in Ingress**:
+### ❌ AWS ALB Target Group Health Check Fails (404 Not Found)
+* **Issue**: The ALB controller marks the ingress targets as unhealthy because the root path `/` on port `80` returns `404 Not Found` (since no default VirtualService matches `/`).
+* **Solution**: Customize the ALB ingress annotations to query the native Istio status port `15021` on the path `/healthz/ready`:
   ```yaml
   alb.ingress.kubernetes.io/healthcheck-port: '15021'
   alb.ingress.kubernetes.io/healthcheck-path: /healthz/ready
   ```
 
-### 🛡️ Namespace Pod Security Standards (PSS)
-EKS namespace `tikto-prod` enforces Pod Security Standards. However, Istio sidecar injection requires `NET_ADMIN` and `NET_RAW` capabilities for the `istio-init` container to manipulate iptables rules.
-* **The Issue**: The `baseline` security profile forbids these capabilities, blocking Pod creation completely with: `violates PodSecurity "baseline:latest": non-default capabilities`.
-* **The Solution**: Set the Pod Security Standard of the namespace to `privileged` in the namespace labels:
+### ❌ Pod Creation Blocked by Pod Security Standards (PSS)
+* **Issue**: Pods fail to create with error: `violates PodSecurity "baseline:latest": non-default capabilities`.
+* **Cause**: The namespace `tikto-prod` enforces `baseline` or `restricted` security profiles, but Istio sidecars require `NET_ADMIN` and `NET_RAW` capabilities to manipulate iptables rules.
+* **Solution**: Exclude or set the PSS of the namespace to `privileged` in the namespace labels:
   ```yaml
   pod-security.kubernetes.io/enforce: privileged
   ```
-
-### 📦 Useful Administration Commands
-
-#### Install Istio Control Plane (Helm)
-```powershell
-# 1. Add Istio Helm repository
-helm repo add istio https://istio-release.storage.googleapis.com/charts
-helm repo update
-
-# 2. Install base CRDs
-helm upgrade --install istio-base istio/base -n istio-system --create-namespace
-
-# 3. Install istiod control plane
-helm upgrade --install istiod istio/istiod -n istio-system --wait
-```
-
-#### Install Istio Ingress Gateway (Helm)
-```powershell
-# Install Ingress Gateway as NodePort for AWS ALB compatibility
-helm upgrade --install istio-ingress istio/gateway \
-  -n tikto-prod \
-  --set service.type=NodePort \
-  --wait
-```
-
-#### Verify Envoy Sidecar Injection
-```powershell
-# Check sidecar proxies status on running pods
-kubectl get pods -n tikto-prod -o wide
-# Look for 2/2 READY containers (1 application container + 1 istio-proxy container)
-```
-
