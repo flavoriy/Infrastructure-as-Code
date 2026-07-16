@@ -123,3 +123,59 @@ kubectl get nodes
 *   **Cost Optimization**: Production EKS uses Spot Instances (`t3.medium`, `t3a.medium`, `t2.medium`), cutting cluster compute costs by **70%**.
 *   **Secure Access**: No public ports are exposed for administration. Argo CD, K3s APIs, and Kibana logs are only reachable after logging into the VPC via Tailscale VPN.
 *   **Encrypted Secrets**: App secrets are pushed dynamically from GitHub Secrets to AWS Secrets Manager using variables, avoiding hardcoding keys in Git.
+
+---
+
+## 🕸️ Istio Service Mesh & AWS ALB Integration (Prod)
+
+For production, the traffic routing architecture utilizes **AWS ALB (Application Load Balancer)** in front of an **Istio Ingress Gateway** to achieve enterprise-grade traffic control, Canary rollouts, and internal Service Mesh security.
+
+### ⚓ AWS ALB Target Group Health Check
+When AWS ALB targets `istio-ingress` pods directly using `target-type: ip`, the ALB controller health check must be customized to avoid `503 Service Temporarily Unavailable` errors:
+* **The Issue**: By default, ALB queries `/` on port `80`. Since the Ingress Gateway returns `404 Not Found` when no default VirtualService matches `/`, ALB marks the targets as unhealthy.
+* **The Solution**: Route the health check to Istio Ingress Gateway's native status port `15021` on the path `/healthz/ready`.
+* **Annotations to apply in Ingress**:
+  ```yaml
+  alb.ingress.kubernetes.io/healthcheck-port: '15021'
+  alb.ingress.kubernetes.io/healthcheck-path: /healthz/ready
+  ```
+
+### 🛡️ Namespace Pod Security Standards (PSS)
+EKS namespace `tikto-prod` enforces Pod Security Standards. However, Istio sidecar injection requires `NET_ADMIN` and `NET_RAW` capabilities for the `istio-init` container to manipulate iptables rules.
+* **The Issue**: The `baseline` security profile forbids these capabilities, blocking Pod creation completely with: `violates PodSecurity "baseline:latest": non-default capabilities`.
+* **The Solution**: Set the Pod Security Standard of the namespace to `privileged` in the namespace labels:
+  ```yaml
+  pod-security.kubernetes.io/enforce: privileged
+  ```
+
+### 📦 Useful Administration Commands
+
+#### Install Istio Control Plane (Helm)
+```powershell
+# 1. Add Istio Helm repository
+helm repo add istio https://istio-release.storage.googleapis.com/charts
+helm repo update
+
+# 2. Install base CRDs
+helm upgrade --install istio-base istio/base -n istio-system --create-namespace
+
+# 3. Install istiod control plane
+helm upgrade --install istiod istio/istiod -n istio-system --wait
+```
+
+#### Install Istio Ingress Gateway (Helm)
+```powershell
+# Install Ingress Gateway as NodePort for AWS ALB compatibility
+helm upgrade --install istio-ingress istio/gateway \
+  -n tikto-prod \
+  --set service.type=NodePort \
+  --wait
+```
+
+#### Verify Envoy Sidecar Injection
+```powershell
+# Check sidecar proxies status on running pods
+kubectl get pods -n tikto-prod -o wide
+# Look for 2/2 READY containers (1 application container + 1 istio-proxy container)
+```
+
