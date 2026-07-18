@@ -1,5 +1,5 @@
 name: 'Terraform Infra'
-run-name: Terraform Infra - ${{ github.event_name == 'workflow_dispatch' && inputs.action || 'plan' }}
+run-name: Terraform Infra - ${{ github.event_name == 'workflow_dispatch' && inputs.action || 'lint' }}
 
 # Creates or destroys Terraform-managed infrastructure.
 on:
@@ -32,10 +32,47 @@ permissions:
   contents: read
 
 jobs:
-  terraform:
-    name: Terraform ${{ github.event_name == 'workflow_dispatch' && inputs.action || 'plan' }}
+  # ────────────────────────────────────────────
+  # JOB 1: Lint — runs on every push / PR
+  # No AWS credentials needed
+  # ────────────────────────────────────────────
+  lint:
+    name: Lint & Security Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+
+    - name: Terraform Format Check
+      run: terraform fmt -check -recursive
+
+    - name: Run Checkov Security Scan
+      uses: bridgecrewio/checkov-action@master
+      with:
+        directory: .
+        framework: terraform
+        output_format: cli
+        hard_fail_on: HIGH,CRITICAL
+        skip_check: CKV_AWS_382,CKV2_AWS_11,CKV2_AWS_41
+
+  # ────────────────────────────────────────────
+  # JOB 2: Apply / Destroy — manual dispatch only
+  # AWS credentials configured here
+  # ────────────────────────────────────────────
+  deploy:
+    name: Terraform ${{ inputs.action }}
     runs-on: ubuntu-latest
     environment: production
+    if: github.event_name == 'workflow_dispatch'
     env:
       TF_VAR_database_url: ${{ secrets.DATABASE_URL }}
       TF_VAR_calendar_database_url: ${{ secrets.CALENDAR_DATABASE_URL }}
@@ -46,6 +83,8 @@ jobs:
       TF_VAR_tikto_profile_api_url: ${{ secrets.TIKTO_PROFILE_API_URL }}
       TF_VAR_tikto_tasks_api_url: ${{ secrets.TIKTO_TASKS_API_URL }}
       TF_VAR_next_public_app_url: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+      TF_VAR_tikto_internal_api_key: ${{ secrets.TIKTO_INTERNAL_API_KEY }}
+      TF_VAR_next_public_supabase_publishable_key: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
       TF_VAR_sonar_token: ${{ secrets.SONAR_TOKEN }}
       TF_VAR_gitops_token: ${{ secrets.GITOPS_TOKEN }}
       TF_VAR_gitops_username: ${{ secrets.GITOPS_USERNAME }}
@@ -67,49 +106,27 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ secrets.AWS_REGION }}
 
-    - name: Clean up deleted secrets (if any)
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+
+    - name: Terraform Init
+      run: terraform init
+
+    - name: Clean up pending-delete secrets
+      if: inputs.action == 'apply'
       run: |
         aws secretsmanager delete-secret --secret-id tikto/dev --force-delete-without-recovery --region ${{ secrets.AWS_REGION }} || true
         aws secretsmanager delete-secret --secret-id tikto/prod --force-delete-without-recovery --region ${{ secrets.AWS_REGION }} || true
         aws secretsmanager delete-secret --secret-id tikto/secrets --force-delete-without-recovery --region ${{ secrets.AWS_REGION }} || true
 
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
-
-    - name: Show workflow mode
-      env:
-        EVENT_NAME: ${{ github.event_name }}
-        ACTION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.action || 'plan' }}
-      run: |
-        echo "Event: $EVENT_NAME"
-        echo "Terraform action: $ACTION"
-
-    - name: Terraform Init
-      run: terraform init
-
-    - name: Terraform Format
-      run: terraform fmt -check -recursive
-
-    - name: Run Checkov Security Scan
-      if: github.event_name != 'workflow_dispatch' || github.event.inputs.action != 'destroy'
-      uses: bridgecrewio/checkov-action@master
-      with:
-        directory: .
-        framework: terraform
-        output_format: cli
-        hard_fail_on: HIGH,CRITICAL
-        skip_check: CKV_AWS_382,CKV2_AWS_11,CKV2_AWS_41
-
     - name: Terraform Plan
-      if: github.event_name != 'workflow_dispatch' || github.event.inputs.action != 'destroy'
+      if: inputs.action == 'apply'
       run: terraform plan -input=false -out=tfplan
 
-
-
-    - name: Terraform Apply (manual trigger)
-      if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply'
+    - name: Terraform Apply
+      if: inputs.action == 'apply'
       run: terraform apply -auto-approve -input=false tfplan
 
     - name: Terraform Destroy
-      if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy'
+      if: inputs.action == 'destroy'
       run: terraform destroy -auto-approve -input=false -lock=false
