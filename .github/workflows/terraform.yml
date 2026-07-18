@@ -82,8 +82,6 @@ jobs:
       TF_VAR_tikto_dashboard_api_url: ${{ secrets.TIKTO_DASHBOARD_API_URL }}
       TF_VAR_tikto_profile_api_url: ${{ secrets.TIKTO_PROFILE_API_URL }}
       TF_VAR_tikto_tasks_api_url: ${{ secrets.TIKTO_TASKS_API_URL }}
-      TF_VAR_next_public_app_url: ${{ secrets.NEXT_PUBLIC_APP_URL }}
-      TF_VAR_tikto_internal_api_key: ${{ secrets.TIKTO_INTERNAL_API_KEY }}
       TF_VAR_next_public_supabase_publishable_key: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
       TF_VAR_sonar_token: ${{ secrets.SONAR_TOKEN }}
       TF_VAR_gitops_token: ${{ secrets.GITOPS_TOKEN }}
