@@ -22,6 +22,7 @@ module "vpc" {
   cidr_block        = var.cidr_block
   dev_subnet_cidr   = var.dev_subnet_cidr
   prod_subnet_cidrs = var.prod_subnet_cidrs
+  eks_cluster_name  = "${var.project_name}-prod-eks"
 }
 
 # 2. Management Environment: Dedicated Argo CD Server EC2
@@ -183,12 +184,13 @@ module "secrets" {
 
 # 7. Project Security: Glue IAM Policies and Node Attachments
 module "security" {
-  source                = "./module/security"
-  project_name          = var.project_name
-  secret_arn            = module.secrets.secret_arn
-  opensearch_domain_arn = module.opensearch_prod.domain_arn
-  eks_node_role_name    = module.eks_prod.node_role_name
-  k3s_node_role_name    = "tikto-k3s_dev-ssm-role"
+  source                         = "./module/security"
+  project_name                   = var.project_name
+  secret_arn                     = module.secrets.secret_arn
+  opensearch_domain_arn          = module.opensearch_prod.domain_arn
+  eks_node_role_name             = module.eks_prod.node_role_name
+  k3s_node_role_name             = "tikto-k3s_dev-ssm-role"
+  alb_controller_policy_document = file("${path.module}/iam_policy.json")
 }
 
 

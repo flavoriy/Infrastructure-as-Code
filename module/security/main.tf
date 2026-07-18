@@ -64,3 +64,16 @@ resource "aws_iam_role_policy_attachment" "k3s_node_secrets_manager" {
   policy_arn = aws_iam_policy.secrets_manager_read.arn
   role       = var.k3s_node_role_name
 }
+
+# IAM Policy: AWS Load Balancer Controller (manages ALB/NLB from Ingress resources)
+resource "aws_iam_policy" "alb_controller" {
+  name        = "${var.project_name}-alb-controller-policy"
+  description = "Allows AWS Load Balancer Controller to manage ALB/NLB resources on behalf of EKS"
+  policy      = var.alb_controller_policy_document
+}
+
+# Attach ALB Controller Policy to EKS Node Role
+resource "aws_iam_role_policy_attachment" "eks_node_alb_controller" {
+  policy_arn = aws_iam_policy.alb_controller.arn
+  role       = var.eks_node_role_name
+}

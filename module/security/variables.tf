@@ -23,3 +23,8 @@ variable "k3s_node_role_name" {
   type        = string
   default     = ""
 }
+
+variable "alb_controller_policy_document" {
+  description = "IAM policy document (JSON) for the AWS Load Balancer Controller"
+  type        = string
+}

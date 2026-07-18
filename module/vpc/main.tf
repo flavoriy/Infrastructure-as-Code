@@ -31,9 +31,10 @@ resource "aws_subnet" "prod" {
   availability_zone       = "${var.aws_region}${element(["a", "b", "c"], count.index)}"
   map_public_ip_on_launch = false
   tags = {
-    Name                              = "${var.project_name}-prod-private-subnet-${count.index + 1}"
-    Environment                       = "prod"
-    "kubernetes.io/role/internal-elb" = "1"
+    Name                                                          = "${var.project_name}-prod-private-subnet-${count.index + 1}"
+    Environment                                                   = "prod"
+    "kubernetes.io/role/internal-elb"                             = "1"
+    "kubernetes.io/cluster/${var.eks_cluster_name}"               = "shared"
   }
 }
 
@@ -45,9 +46,10 @@ resource "aws_subnet" "public" {
   availability_zone       = "${var.aws_region}${element(["a", "b", "c"], count.index)}"
   map_public_ip_on_launch = true
   tags = {
-    Name                     = "${var.project_name}-public-subnet-${count.index + 1}"
-    Environment              = "public"
-    "kubernetes.io/role/elb" = "1"
+    Name                                                          = "${var.project_name}-public-subnet-${count.index + 1}"
+    Environment                                                   = "public"
+    "kubernetes.io/role/elb"                                      = "1"
+    "kubernetes.io/cluster/${var.eks_cluster_name}"               = "shared"
   }
 }
 

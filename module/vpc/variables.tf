@@ -32,3 +32,9 @@ variable "public_subnet_cidrs" {
   type        = list(string)
   default     = ["10.0.10.0/24", "10.0.11.0/24"]
 }
+
+variable "eks_cluster_name" {
+  description = "Name of the EKS cluster, used to tag subnets for ALB discovery"
+  type        = string
+  default     = ""
+}
